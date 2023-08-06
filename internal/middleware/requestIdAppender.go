@@ -8,12 +8,12 @@ import (
 )
 
 func AddRequestIdHeader(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 		requestId := generateRequestID()
 
-		r.Header.Add("Request-ID", requestId)
+		httpRequest.Header.Add("Request-ID", requestId)
 
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(responseWriter, httpRequest)
 	})
 }
 

@@ -6,6 +6,7 @@ type LoginResponse struct {
 
 type SignupResponse struct {
 	Message string `json:"message"`
+	UserId  string `json:"user_id"`
 }
 
 type ErrorResponse struct {

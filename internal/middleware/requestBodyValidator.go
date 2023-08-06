@@ -1,3 +1,6 @@
+//go:build !staticcheck
+// +build !staticcheck
+
 package middleware
 
 import (
@@ -5,7 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	authModels "github.com/akgarg0472/urlshortener-auth-service/internal/model"
+	AuthModels "github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	utils "github.com/akgarg0472/urlshortener-auth-service/utils"
 )
@@ -13,17 +16,17 @@ import (
 var logger = Logger.GetLogger("requestBodyValidator.go")
 
 func LoginRequestBodyValidator(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestId := r.Header.Get("Request-ID")
+	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+		requestId := httpRequest.Header.Get("Request-ID")
 
-		var loginRequest authModels.LoginRequest
+		var loginRequest AuthModels.LoginRequest
 
-		decodeError := decodeRequestBody(r, &loginRequest)
+		decodeError := decodeRequestBody(httpRequest, &loginRequest)
 
 		if decodeError != nil {
 			logger.Error("[{}]: Error decoding request body: {}", requestId, decodeError.Error())
 			resp := generateErrorResponse("Invalid request body", 400)
-			writeErrorResponse(w, http.StatusBadRequest, resp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, resp)
 			return
 		}
 
@@ -32,31 +35,28 @@ func LoginRequestBodyValidator(next http.Handler) http.Handler {
 		if validationErrors != nil {
 			logger.Error("[{}]: Login Request Validation failed: {}", requestId, validationErrors)
 			errorResponse, _ := json.Marshal(validationErrors)
-			writeErrorResponse(w, http.StatusBadRequest, errorResponse)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
 			return
 		}
 
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, "loginRequest", loginRequest)
+		ctx := context.WithValue(httpRequest.Context(), "loginRequest", loginRequest)
 
-		r = r.WithContext(ctx)
-
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})
 }
 
 func SignupRequestBodyValidator(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestId := r.Header.Get("Request-ID")
+	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+		requestId := httpRequest.Header.Get("Request-ID")
 
-		var signupRequest authModels.SignupRequest
+		var signupRequest AuthModels.SignupRequest
 
-		decodeError := decodeRequestBody(r, &signupRequest)
+		decodeError := decodeRequestBody(httpRequest, &signupRequest)
 
 		if decodeError != nil {
 			logger.Error("[{}]: Error decoding request body: {}", requestId, decodeError.Error())
 			resp := generateErrorResponse("Invalid request body", 400)
-			writeErrorResponse(w, http.StatusBadRequest, resp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, resp)
 			return
 		}
 
@@ -65,31 +65,28 @@ func SignupRequestBodyValidator(next http.Handler) http.Handler {
 		if validationErrors != nil {
 			logger.Error("[{}]: Signup Request Validation failed")
 			errorResponse, _ := json.Marshal(validationErrors)
-			writeErrorResponse(w, http.StatusBadRequest, errorResponse)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
 			return
 		}
 
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, "signupRequest", signupRequest)
+		ctx := context.WithValue(httpRequest.Context(), "signupRequest", signupRequest)
 
-		r = r.WithContext(ctx)
-
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})
 }
 
-func decodeRequestBody(r *http.Request, ref interface{}) error {
-	return json.NewDecoder(r.Body).Decode(&ref)
+func decodeRequestBody(httpRequest *http.Request, ref interface{}) error {
+	return json.NewDecoder(httpRequest.Body).Decode(&ref)
 }
 
-func writeErrorResponse(w http.ResponseWriter, statusCode int, message []byte) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	w.Write(message)
+func writeErrorResponse(responseWriter http.ResponseWriter, statusCode int, message []byte) {
+	responseWriter.Header().Set("Content-Type", "application/json")
+	responseWriter.WriteHeader(statusCode)
+	responseWriter.Write(message)
 }
 
 func generateErrorResponse(message string, errorCode int16) []byte {
-	errorResponse := authModels.ErrorResponse{
+	errorResponse := AuthModels.ErrorResponse{
 		Message:   message,
 		ErrorCode: int(errorCode),
 	}

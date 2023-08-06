@@ -61,6 +61,13 @@ func (l *Logger) Error(message string, args ...interface{}) {
 	}
 }
 
+func (l *Logger) Fatal(message string, args ...interface{}) {
+	if len(args) > 0 {
+		message = fmt.Sprintf(replacer.Replace(message), args...)
+	}
+	doLog(l.file, "FATAL", message)
+}
+
 func (l *Logger) Debug(message string, args ...interface{}) {
 	if l.config.IsDebugEnabled {
 		if len(args) > 0 {

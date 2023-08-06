@@ -3,25 +3,25 @@ package router
 import (
 	"github.com/go-chi/chi"
 
-	authHandler "github.com/akgarg0472/urlshortener-auth-service/internal/handler"
-	middlewares "github.com/akgarg0472/urlshortener-auth-service/internal/middleware"
+	AuthHandler "github.com/akgarg0472/urlshortener-auth-service/internal/handler"
+	Middlewares "github.com/akgarg0472/urlshortener-auth-service/internal/middleware"
 )
 
 func AuthRouter() *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Route("/login", func(r chi.Router) {
-		r.Use(middlewares.AddRequestIdHeader)
-		r.Use(middlewares.ValidateRequestContentType)
-		r.Use(middlewares.LoginRequestBodyValidator)
-		r.Post("/", authHandler.Login)
+		r.Use(Middlewares.AddRequestIdHeader)
+		r.Use(Middlewares.ValidateRequestContentType)
+		r.Use(Middlewares.LoginRequestBodyValidator)
+		r.Post("/", AuthHandler.Login)
 	})
 
 	router.Route("/signup", func(r chi.Router) {
-		r.Use(middlewares.AddRequestIdHeader)
-		r.Use(middlewares.ValidateRequestContentType)
-		r.Use(middlewares.SignupRequestBodyValidator)
-		r.Post("/", authHandler.Signup)
+		r.Use(Middlewares.AddRequestIdHeader)
+		r.Use(Middlewares.ValidateRequestContentType)
+		r.Use(Middlewares.SignupRequestBodyValidator)
+		r.Post("/", AuthHandler.Signup)
 	})
 
 	return router
