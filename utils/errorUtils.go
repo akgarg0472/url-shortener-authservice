@@ -26,11 +26,24 @@ func InternalServerErrorResponse() *AuthModels.ErrorResponse {
 	}
 }
 
+func BadRequestErrorResponse(message string) *AuthModels.ErrorResponse {
+	return &AuthModels.ErrorResponse{
+		Message:   message,
+		ErrorCode: 400,
+	}
+}
+
 func GetErrorResponse(message interface{}, errorCode int16) *AuthModels.ErrorResponse {
 	return &AuthModels.ErrorResponse{
 		Message:   message,
 		ErrorCode: errorCode,
 	}
+}
+
+func GetErrorResponseByte(message interface{}, errorCode int16) []byte {
+	resp := GetErrorResponse(message, errorCode)
+	errorResponseJson, _ := ConvertToJsonBytes(resp)
+	return errorResponseJson
 }
 
 func ParseMySQLErrorAndReturnErrorResponse(err error) *AuthModels.ErrorResponse {

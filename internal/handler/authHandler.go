@@ -6,11 +6,13 @@ import (
 	AuthService "github.com/akgarg0472/urlshortener-auth-service/internal/service/auth"
 	AuthModels "github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
+	"github.com/akgarg0472/urlshortener-auth-service/utils"
 	Utils "github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
 var logger = Logger.GetLogger("authHandler.go")
 
+// Handler Function to handle login request
 func Login(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	context := httpRequest.Context()
 
@@ -19,18 +21,12 @@ func Login(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	logger.Trace("[{}]: Login request received on handler -> {}", requestId, loginRequest)
 
-	loginResponse := AuthService.Login(requestId, loginRequest)
-	jsonResponse, err := Utils.ConvertToJsonString(loginResponse)
+	loginResponse, loginError := AuthService.Login(requestId, loginRequest)
 
-	if err != nil {
-		logger.Error("[{}]: Error Converting Login Response to string: {}", requestId, err.Error())
-		sendErrorResponse(responseWriter, http.StatusInternalServerError, "Internal Server Error")
-		return
-	}
-
-	responseWriter.Write([]byte(jsonResponse))
+	sendResponseToClient(responseWriter, requestId, loginResponse, loginError)
 }
 
+// Handler Function to handle signup request
 func Signup(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	context := httpRequest.Context()
 
@@ -39,19 +35,68 @@ func Signup(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	logger.Trace("[{}]: Signup request received on handler -> {}", requestId, signupRequest)
 
-	signupResponse := AuthService.Signup(requestId, signupRequest)
-	jsonResponse, err := Utils.ConvertToJsonString(signupResponse)
+	signupResponse, signupError := AuthService.Signup(requestId, signupRequest)
 
+	sendResponseToClient(responseWriter, requestId, signupResponse, signupError)
+}
+
+// Handler Function to handle logout request
+func Logout(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+	context := httpRequest.Context()
+
+	requestId := httpRequest.Header.Get("Request-ID")
+	logoutRequest := context.Value("logoutRequest").(AuthModels.LogoutRequest)
+
+	logger.Trace("[{}]: Logout request received on handler -> {}", requestId, logoutRequest)
+
+	logoutResponse, logoutError := AuthService.Logout(requestId, logoutRequest)
+
+	sendResponseToClient(responseWriter, requestId, logoutResponse, logoutError)
+}
+
+// Handler Function to handle auth token validation request
+func VerifyToken(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+	context := httpRequest.Context()
+
+	requestId := httpRequest.Header.Get("Request-ID")
+	validateTokenRequest := context.Value("validateTokenRequest").(AuthModels.ValidateTokenRequest)
+
+	logger.Trace("[{}]: Validate Token request received on handler -> {}", requestId, validateTokenRequest)
+
+	validateTokenResponse, validateTokenError := AuthService.ValidateToken(requestId, validateTokenRequest)
+
+	sendResponseToClient(responseWriter, requestId, validateTokenResponse, validateTokenError)
+}
+
+// Function to send response back to client
+func sendResponseToClient(responseWriter http.ResponseWriter, requestId string, response interface{}, err *AuthModels.ErrorResponse) {
 	if err != nil {
-		logger.Error("[{}]: Error while converting signup response to string -> {}", requestId, err)
-		sendErrorResponse(responseWriter, http.StatusInternalServerError, "Internal Server Error")
+		errorJson, _ := utils.ConvertToJsonString(err)
+		sendResponseWithStatusAndMessage(responseWriter, int(err.ErrorCode), errorJson)
 		return
 	}
 
+	jsonResponse, jsonConvertError := Utils.ConvertToJsonString(response)
+
+	if jsonConvertError != nil {
+		logger.Error("[{}]: Error Converting Response to JSON: {}", requestId, jsonConvertError.Error())
+
+		errorResponse := &AuthModels.ErrorResponse{
+			Message:   "Internal Server Error",
+			ErrorCode: 500,
+		}
+
+		errorResponseJson, _ := utils.ConvertToJsonString(errorResponse)
+		sendResponseWithStatusAndMessage(responseWriter, http.StatusInternalServerError, errorResponseJson)
+		return
+	}
+
+	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.Write([]byte(jsonResponse))
 }
 
-func sendErrorResponse(responseWriter http.ResponseWriter, statusCode int, message string) {
+// Function to send error response to client with given status code and message
+func sendResponseWithStatusAndMessage(responseWriter http.ResponseWriter, statusCode int, message string) {
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(statusCode)
 	responseWriter.Write([]byte(message))

@@ -10,4 +10,5 @@ type LoggerConfig struct {
 	IsErrorEnabled bool
 	IsDebugEnabled bool
 	IsTraceEnabled bool
+	IsFatalEnabled bool
 }

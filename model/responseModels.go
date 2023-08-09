@@ -11,5 +11,13 @@ type SignupResponse struct {
 
 type ErrorResponse struct {
 	Message   interface{} `json:"message"`
-	ErrorCode int         `json:"error_code"`
+	ErrorCode int16       `json:"error_code"`
+}
+
+type LogoutResponse struct {
+	Message string `json:"message"`
+}
+
+type ValidateTokenResponse struct {
+	Message string `json:"message"`
 }

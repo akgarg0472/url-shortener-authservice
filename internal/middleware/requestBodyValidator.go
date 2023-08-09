@@ -1,6 +1,3 @@
-//go:build !staticcheck
-// +build !staticcheck
-
 package middleware
 
 import (
@@ -13,7 +10,7 @@ import (
 	utils "github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
-var logger = Logger.GetLogger("requestBodyValidator.go")
+var rbvLogger = Logger.GetLogger("requestBodyValidator.go")
 
 func LoginRequestBodyValidator(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
@@ -24,16 +21,17 @@ func LoginRequestBodyValidator(next http.Handler) http.Handler {
 		decodeError := decodeRequestBody(httpRequest, &loginRequest)
 
 		if decodeError != nil {
-			logger.Error("[{}]: Error decoding request body: {}", requestId, decodeError.Error())
-			resp := generateErrorResponse("Invalid request body", 400)
-			writeErrorResponse(responseWriter, http.StatusBadRequest, resp)
+			rbvLogger.Error("[{}]: Error decoding login request body: {}", requestId, decodeError.Error())
+			resp := utils.GetErrorResponse("Invalid request body", 400)
+			errorResponseJson, _ := utils.ConvertToJsonBytes(resp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponseJson)
 			return
 		}
 
 		validationErrors := utils.ValidateRequestFields(loginRequest)
 
 		if validationErrors != nil {
-			logger.Error("[{}]: Login Request Validation failed: {}", requestId, validationErrors)
+			rbvLogger.Error("[{}]: Login Request Validation failed: {}", requestId, validationErrors)
 			errorResponse, _ := json.Marshal(validationErrors)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
 			return
@@ -54,22 +52,85 @@ func SignupRequestBodyValidator(next http.Handler) http.Handler {
 		decodeError := decodeRequestBody(httpRequest, &signupRequest)
 
 		if decodeError != nil {
-			logger.Error("[{}]: Error decoding request body: {}", requestId, decodeError.Error())
-			resp := generateErrorResponse("Invalid request body", 400)
-			writeErrorResponse(responseWriter, http.StatusBadRequest, resp)
+			rbvLogger.Error("[{}]: Error decoding signup request body: {}", requestId, decodeError.Error())
+			resp := utils.GetErrorResponse("Invalid request body", 400)
+			errorJsonResponse, _ := utils.ConvertToJsonBytes(resp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorJsonResponse)
 			return
 		}
 
 		validationErrors := utils.ValidateRequestFields(signupRequest)
 
 		if validationErrors != nil {
-			logger.Error("[{}]: Signup Request Validation failed")
+			rbvLogger.Error("[{}]: Signup Request Validation failed")
 			errorResponse, _ := json.Marshal(validationErrors)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
 			return
 		}
 
 		ctx := context.WithValue(httpRequest.Context(), "signupRequest", signupRequest)
+
+		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
+	})
+}
+
+func LogoutRequestBodyValidator(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+		requestId := httpRequest.Header.Get("Request-ID")
+
+		var logoutRequest AuthModels.LogoutRequest
+
+		decodeError := decodeRequestBody(httpRequest, &logoutRequest)
+
+		if decodeError != nil {
+			rbvLogger.Error("[{}]: Error decoding logout request body: {}", requestId, decodeError.Error())
+			resp := utils.GetErrorResponse("Invalid request body", 400)
+			errorJsonResponse, _ := utils.ConvertToJsonBytes(resp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorJsonResponse)
+			return
+		}
+
+		validationErrors := utils.ValidateRequestFields(logoutRequest)
+
+		if validationErrors != nil {
+			rbvLogger.Error("[{}]: Logout Request Validation failed")
+			errorResponse, _ := json.Marshal(validationErrors)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
+			return
+		}
+
+		ctx := context.WithValue(httpRequest.Context(), "logoutRequest", logoutRequest)
+
+		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
+	})
+}
+
+func VerifyTokenRequestBodyValidator(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+		requestId := httpRequest.Header.Get("Request-ID")
+
+		var validateTokenRequest AuthModels.ValidateTokenRequest
+
+		decodeError := decodeRequestBody(httpRequest, &validateTokenRequest)
+
+		if decodeError != nil {
+			rbvLogger.Error("[{}]: Error decoding validate token request body: {}", requestId, decodeError.Error())
+			resp := utils.GetErrorResponse("Invalid request body", 400)
+			errorJsonResponse, _ := utils.ConvertToJsonBytes(resp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorJsonResponse)
+			return
+		}
+
+		validationErrors := utils.ValidateRequestFields(validateTokenRequest)
+
+		if validationErrors != nil {
+			rbvLogger.Error("[{}]: Validate Token Request Validation failed")
+			errorResponse, _ := json.Marshal(validationErrors)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
+			return
+		}
+
+		ctx := context.WithValue(httpRequest.Context(), "validateTokenRequest", validateTokenRequest)
 
 		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})
@@ -83,13 +144,4 @@ func writeErrorResponse(responseWriter http.ResponseWriter, statusCode int, mess
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(statusCode)
 	responseWriter.Write(message)
-}
-
-func generateErrorResponse(message string, errorCode int16) []byte {
-	errorResponse := AuthModels.ErrorResponse{
-		Message:   message,
-		ErrorCode: int(errorCode),
-	}
-	resp, _ := json.Marshal(errorResponse)
-	return resp
 }

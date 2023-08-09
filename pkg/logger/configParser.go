@@ -63,15 +63,27 @@ func ReadConfig(path string) LoggerConfig {
 
 func setLogLevel(config *LoggerConfig) {
 	switch config.Level {
+	case "fatal":
+	case "FATAL":
+		config.IsFatalEnabled = true
+
 	case "error":
 	case "ERROR":
 		config.IsErrorEnabled = true
+		config.IsFatalEnabled = true
+
+	case "info":
+	case "INFO":
+		config.IsInfoEnabled = true
+		config.IsErrorEnabled = true
+		config.IsFatalEnabled = true
 
 	case "debug":
 	case "DEBUG":
 		config.IsDebugEnabled = true
 		config.IsInfoEnabled = true
 		config.IsErrorEnabled = true
+		config.IsFatalEnabled = true
 
 	case "trace":
 	case "TRACE":
@@ -79,10 +91,7 @@ func setLogLevel(config *LoggerConfig) {
 		config.IsDebugEnabled = true
 		config.IsInfoEnabled = true
 		config.IsErrorEnabled = true
-
-	default:
-		config.IsInfoEnabled = true
-		config.IsErrorEnabled = true
+		config.IsFatalEnabled = true
 	}
 }
 

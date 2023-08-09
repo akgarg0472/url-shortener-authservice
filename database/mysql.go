@@ -50,15 +50,16 @@ func InitDB() {
 	})
 }
 
-func GetInstance() *sql.DB {
+func GetInstance(requestId string, from string) *sql.DB {
+	logger.Trace("[{}]: {} getting DB instance", requestId, from)
 	return instance
 }
 
 func getDatasource() string {
+	dbHost := Utils.GetEnvVariable("MYSQL_DB_HOST", "127.0.0.1")
+	dbPort := Utils.GetEnvVariable("MYSQL_DB_PORT", "3306")
 	dbUserName := Utils.GetEnvVariable("MYSQL_DB_USERNAME", "")
 	dbPassword := Utils.GetEnvVariable("MYSQL_DB_PASSWORD", "")
-	dbHost := Utils.GetEnvVariable("MYSQL_DB_HOST", "localhost")
-	dbPort := Utils.GetEnvVariable("MYSQL_DB_PORT", "3036")
 	dbName := Utils.GetEnvVariable("MYSQL_DB_NAME", "")
 
 	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUserName, dbPassword, dbHost, dbPort, dbName)
@@ -79,8 +80,13 @@ func initDatabaseSchema() error {
 		return fmt.Errorf("Error reading sql file: " + err.Error())
 	}
 
-	logger.Trace("Executing Schema Initializer SQL Queries: {}", string(createSQLQueries))
-	instance.Exec(string(createSQLQueries))
+	result, err := instance.Exec(string(createSQLQueries))
+
+	if err != nil {
+		return fmt.Errorf("Error creating tables: " + err.Error())
+	}
+
+	logger.Trace("Tables initialized successfully with result: {}", result)
 
 	return nil
 }

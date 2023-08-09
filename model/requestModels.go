@@ -10,6 +10,17 @@ type LoginRequest struct {
 type SignupRequest struct {
 	Email    string `json:"email" validate:"required"`
 	Password string `json:"password" validate:"required"`
+	UserId   string
+}
+
+type LogoutRequest struct {
+	AuthToken string `json:"auth_token" validate:"required"`
+	UserId    string `json:"user_id" validate:"required"`
+}
+
+type ValidateTokenRequest struct {
+	AuthToken string `json:"auth_token" validate:"required"`
+	UserId    string `json:"user_id" validate:"required"`
 }
 
 func (request LoginRequest) String() string {
@@ -17,5 +28,5 @@ func (request LoginRequest) String() string {
 }
 
 func (request SignupRequest) String() string {
-	return fmt.Sprintf("Email: %s", request.Email)
+	return fmt.Sprintf("Email: %s, UserId: %s", request.Email, request.UserId)
 }

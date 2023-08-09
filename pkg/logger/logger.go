@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-var loggerConfig LoggerConfig = ReadConfig("logger.conf")
+var loggerConfig LoggerConfig
 var replacer = strings.NewReplacer("{}", "%v")
 
 type Logger struct {
@@ -16,7 +16,9 @@ type Logger struct {
 	file   string
 }
 
-func InitLogger() {
+func init() {
+	loggerConfig = ReadConfig("logger.conf")
+
 	if loggerConfig.Enabled {
 		__init__(&loggerConfig)
 	}
@@ -62,10 +64,12 @@ func (l *Logger) Error(message string, args ...interface{}) {
 }
 
 func (l *Logger) Fatal(message string, args ...interface{}) {
-	if len(args) > 0 {
-		message = fmt.Sprintf(replacer.Replace(message), args...)
+	if l.config.IsFatalEnabled {
+		if len(args) > 0 {
+			message = fmt.Sprintf(replacer.Replace(message), args...)
+		}
+		doLog(l.file, "FATAL", message)
 	}
-	doLog(l.file, "FATAL", message)
 }
 
 func (l *Logger) Debug(message string, args ...interface{}) {

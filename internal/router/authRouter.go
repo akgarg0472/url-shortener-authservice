@@ -24,5 +24,19 @@ func AuthRouter() *chi.Mux {
 		r.Post("/", AuthHandler.Signup)
 	})
 
+	router.Route("/validate-token", func(r chi.Router) {
+		r.Use(Middlewares.AddRequestIdHeader)
+		r.Use(Middlewares.ValidateRequestContentType)
+		r.Use(Middlewares.VerifyTokenRequestBodyValidator)
+		r.Post("/", AuthHandler.VerifyToken)
+	})
+
+	router.Route("/logout", func(r chi.Router) {
+		r.Use(Middlewares.AddRequestIdHeader)
+		r.Use(Middlewares.ValidateRequestContentType)
+		r.Use(Middlewares.LogoutRequestBodyValidator)
+		r.Post("/", AuthHandler.Logout)
+	})
+
 	return router
 }
