@@ -13,17 +13,20 @@ var logger = Logger.GetLogger("discoveryClient.go")
 func InitDiscoveryClient(port int) {
 	client := eureka.NewClient([]string{"http://localhost:8761/eureka/v2"})
 
-	instanceInfo := eureka.NewInstanceInfo("localhost", "auth-service", "127.0.0.1", 8081, 30, false)
-	instanceInfo.InstanceID = "auth-service:" + "localhost" + ":" + fmt.Sprintf("%d", port)
+	instanceInfo := eureka.NewInstanceInfo("localhost", "urlshortener-auth-service", "127.0.0.1", 8081, 60, false)
+	instanceInfo.InstanceID = "localhost:urlshortener-auth-service"
+	instanceInfo.VipAddress = "urlshortener-auth-service"
+	instanceInfo.SecureVipAddress = "urlshortener-auth-service"
 
 	registerInstance(client, instanceInfo)
 
-	initHeartbeat(client, instanceInfo)
+	initHeartbeat(client, instanceInfo, 30*time.Second)
 }
 
-func initHeartbeat(client *eureka.Client, instanceInfo *eureka.InstanceInfo) {
+func initHeartbeat(client *eureka.Client, instanceInfo *eureka.InstanceInfo, heartbeatFrequency time.Duration) {
 	go func() {
-		time.Sleep(30 * time.Second)
+		// Wait for heartbeatFrequency time before sending first heartbeat
+		time.Sleep(heartbeatFrequency)
 
 		for {
 			logger.Debug("Sending heartbeat to discovery server {}:{}", instanceInfo.App, instanceInfo.InstanceID)
@@ -39,7 +42,7 @@ func initHeartbeat(client *eureka.Client, instanceInfo *eureka.InstanceInfo) {
 				}
 			}
 
-			time.Sleep(30 * time.Second)
+			time.Sleep(heartbeatFrequency)
 		}
 	}()
 }
