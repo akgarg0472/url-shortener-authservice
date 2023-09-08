@@ -13,10 +13,15 @@ var logger = Logger.GetLogger("discoveryClient.go")
 func InitDiscoveryClient(port int) {
 	client := eureka.NewClient([]string{"http://localhost:8761/eureka/v2"})
 
-	instanceInfo := eureka.NewInstanceInfo("localhost", "urlshortener-auth-service", "127.0.0.1", 8081, 60, false)
-	instanceInfo.InstanceID = "localhost:urlshortener-auth-service"
-	instanceInfo.VipAddress = "urlshortener-auth-service"
-	instanceInfo.SecureVipAddress = "urlshortener-auth-service"
+	host := "localhost"
+	appId := "urlshortener-auth-service"
+	instanceId := fmt.Sprintf("%s:urlshortener-auth-service:%d", host, port)
+	appAddress := "urlshortener-auth-service"
+
+	instanceInfo := eureka.NewInstanceInfo(host, appId, "127.0.0.1", port, 60, false)
+	instanceInfo.InstanceID = instanceId
+	instanceInfo.VipAddress = appAddress
+	instanceInfo.SecureVipAddress = appAddress
 
 	registerInstance(client, instanceInfo)
 
@@ -29,7 +34,7 @@ func initHeartbeat(client *eureka.Client, instanceInfo *eureka.InstanceInfo, hea
 		time.Sleep(heartbeatFrequency)
 
 		for {
-			logger.Debug("Sending heartbeat to discovery server {}:{}", instanceInfo.App, instanceInfo.InstanceID)
+			logger.Debug("Sending heartbeat to discovery server {}, {}", instanceInfo.App, instanceInfo.InstanceID)
 			err := client.SendHeartbeat(instanceInfo.App, instanceInfo.InstanceID)
 
 			if err != nil {
