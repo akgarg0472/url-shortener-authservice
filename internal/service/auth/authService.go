@@ -94,15 +94,7 @@ func Signup(requestId string, signupRequest AuthModels.SignupRequest) (*AuthMode
 func Logout(requestId string, logoutRequest AuthModels.LogoutRequest) (*AuthModels.LogoutResponse, *AuthModels.ErrorResponse) {
 	logger.Info("[{}]: Processing Logout Request -> {}", requestId, logoutRequest)
 
-	token := logoutRequest.AuthToken
-	userId := logoutRequest.UserId
-
-	err := JwtService.GetInstance().InvalidateJwtToken(requestId, token, userId)
-
-	if err != nil {
-		logger.Error("[{}]: Error while invalidating jwt token -> {}", requestId, err)
-		return nil, err
-	}
+	// todo: implement logic if required
 
 	return &AuthModels.LogoutResponse{
 		Message: "Logout successful",
@@ -116,14 +108,12 @@ func ValidateToken(requestId string, validateTokenRequest AuthModels.ValidateTok
 	token := validateTokenRequest.AuthToken
 	userId := validateTokenRequest.UserId
 
-	err := JwtService.GetInstance().ValidateJwtToken(requestId, token, userId)
+	tokenValidateResp, err := JwtService.GetInstance().ValidateJwtToken(requestId, token, userId)
 
 	if err != nil {
 		logger.Error("[{}]: Error while validating jwt token -> {}", requestId, err)
 		return nil, err
 	}
 
-	return &AuthModels.ValidateTokenResponse{
-		Message: "Token validated successfully",
-	}, nil
+	return tokenValidateResp, nil
 }

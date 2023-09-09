@@ -12,9 +12,8 @@ import (
 )
 
 var (
-	logger    = Logger.GetLogger("jwtService.go")
-	instance  *JwtService
-	jwtTokens = make(map[string]string, 0)
+	logger   = Logger.GetLogger("jwtService.go")
+	instance *JwtService
 )
 
 type JwtService struct {
@@ -57,21 +56,12 @@ func (jwtService *JwtService) GenerateJwtToken(requestId string, user Model.User
 		return "", utils.InternalServerErrorResponse()
 	}
 
-	jwtTokens[user.Id] = jwtTokenString
-
 	return jwtTokenString, nil
 }
 
 // ValidateJwtToken validates the JWT token by checking if it exists in the map and is not expired
-func (jwtService *JwtService) ValidateJwtToken(requestId string, jwtToken string, userId string) *Model.ErrorResponse {
-	logger.Trace("[{}]: Validating JWT token -> {}, {}", requestId, userId, jwtToken)
-
-	existingMappedToken := jwtTokens[userId]
-
-	if existingMappedToken == "" || existingMappedToken != jwtToken {
-		logger.Fatal("[{}]: JWT token seems to be suspicious", requestId)
-		return utils.BadRequestErrorResponse("JWT_TOKEN_INVALID")
-	}
+func (jwtService *JwtService) ValidateJwtToken(requestId string, jwtToken string, userId string) (*Model.ValidateTokenResponse, *Model.ErrorResponse) {
+	logger.Debug("[{}]: Validating JWT token -> {}, {}", requestId, userId, jwtToken)
 
 	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -86,31 +76,24 @@ func (jwtService *JwtService) ValidateJwtToken(requestId string, jwtToken string
 		claims, isMapClaims := token.Claims.(jwt.MapClaims)
 
 		if isMapClaims {
-			return utils.ParseAndGenerateJwtErrorResponse(claims)
+			return nil, utils.ParseAndGenerateJwtErrorResponse(claims)
 		}
 
-		return utils.BadRequestErrorResponse("JWT_TOKEN_INVALID")
+		return nil, utils.BadRequestErrorResponse("JWT_TOKEN_INVALID")
 	}
 
-	return nil
-}
+	claims, _ := token.Claims.(jwt.MapClaims)
 
-// InvalidateJwtToken invalidates the JWT token by removing it from the map
-func (jwtService *JwtService) InvalidateJwtToken(requestId string, jwtToken string, userId string) *Model.ErrorResponse {
-	logger.Trace("[{}]: Invalidating JWT token -> {}", requestId, jwtToken)
+	fmt.Println(claims)
+	fmt.Println(claims["exp"].(float64))
 
-	existingToken := jwtTokens[userId]
-
-	if existingToken == "" || existingToken != jwtToken {
-		logger.Fatal("[{}]: JWT token seems to be suspicious", requestId)
-		return utils.BadRequestErrorResponse("JWT_TOKEN_INVALID")
-	}
-
-	delete(jwtTokens, userId)
-
-	logger.Debug("[{}]: JWT token invalidated successfully for userId {}", requestId, userId)
-
-	return nil
+	return &Model.ValidateTokenResponse{
+		UserId:     claims["uid"].(string),
+		Expiration: claims["exp"].(float64),
+		Token:      token.Raw,
+		StatusCode: 200,
+		Success:    true,
+	}, nil
 }
 
 func getSecretKey() string {

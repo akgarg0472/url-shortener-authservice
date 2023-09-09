@@ -73,6 +73,21 @@ func initConnectionPool(db *sql.DB) {
 	db.SetMaxOpenConns(maxOpenConnection)
 }
 
+func CloseDB() error {
+	if instance != nil {
+		err := instance.Close()
+
+		if err != nil {
+			logger.Error("Error closing DB: {}", err.Error())
+			return err
+		}
+
+		logger.Info("DB Instance closed successfully")
+	}
+
+	return nil
+}
+
 func initDatabaseSchema() error {
 	createSQLQueries, err := os.ReadFile("database/queries/create_tables.sql")
 

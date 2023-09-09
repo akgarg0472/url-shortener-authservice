@@ -19,5 +19,9 @@ type LogoutResponse struct {
 }
 
 type ValidateTokenResponse struct {
-	Message string `json:"message"`
+	StatusCode int16   `json:"statusCode"`
+	UserId     string  `json:"userId"`
+	Token      string  `json:"token"`
+	Expiration float64 `json:"expiration"`
+	Success    bool    `json:"success"`
 }
