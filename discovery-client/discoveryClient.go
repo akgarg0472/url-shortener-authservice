@@ -27,11 +27,9 @@ func InitDiscoveryClient(port int) {
 	instanceInfo.VipAddress = appAddress
 	instanceInfo.SecureVipAddress = appAddress
 
-	err := registerInstance()
+	registerInstance()
 
-	if err == nil {
-		initHeartbeat(30 * time.Second)
-	}
+	initHeartbeat(30 * time.Second)
 }
 
 func UnregisterInstance() error {

@@ -19,7 +19,6 @@ type LogoutResponse struct {
 }
 
 type ValidateTokenResponse struct {
-	StatusCode int16   `json:"statusCode"`
 	UserId     string  `json:"userId"`
 	Token      string  `json:"token"`
 	Expiration float64 `json:"expiration"`

@@ -83,16 +83,13 @@ func (jwtService *JwtService) ValidateJwtToken(requestId string, jwtToken string
 	}
 
 	claims, _ := token.Claims.(jwt.MapClaims)
-
-	fmt.Println(claims)
-	fmt.Println(claims["exp"].(float64))
+	uId := claims["uid"].(string)
 
 	return &Model.ValidateTokenResponse{
-		UserId:     claims["uid"].(string),
+		UserId:     uId,
 		Expiration: claims["exp"].(float64),
 		Token:      token.Raw,
-		StatusCode: 200,
-		Success:    true,
+		Success:    userId == uId,
 	}, nil
 }
 
