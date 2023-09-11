@@ -73,10 +73,12 @@ func (jwtService *JwtService) ValidateJwtToken(requestId string, jwtToken string
 	if err != nil {
 		logger.Error("[{}]: Error validating token -> {}", requestId, err.Error())
 
-		claims, isMapClaims := token.Claims.(jwt.MapClaims)
+		if token != nil {
+			claims, isMapClaims := token.Claims.(jwt.MapClaims)
 
-		if isMapClaims {
-			return nil, utils.ParseAndGenerateJwtErrorResponse(claims)
+			if isMapClaims {
+				return nil, utils.ParseAndGenerateJwtErrorResponse(claims)
+			}
 		}
 
 		return nil, utils.BadRequestErrorResponse("JWT_TOKEN_INVALID")
