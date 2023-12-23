@@ -32,7 +32,12 @@ func LoginRequestBodyValidator(next http.Handler) http.Handler {
 
 		if validationErrors != nil {
 			rbvLogger.Error("[{}]: Login Request Validation failed: {}", requestId, validationErrors)
-			errorResponse, _ := json.Marshal(validationErrors)
+			errResp := AuthModels.ErrorResponse{
+				Message:   "Request validation failed",
+				ErrorCode: 400,
+				Errors:    validationErrors,
+			}
+			errorResponse, _ := json.Marshal(errResp)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
 			return
 		}
@@ -63,7 +68,12 @@ func SignupRequestBodyValidator(next http.Handler) http.Handler {
 
 		if validationErrors != nil {
 			rbvLogger.Error("[{}]: Signup Request Validation failed")
-			errorResponse, _ := json.Marshal(validationErrors)
+			errResp := AuthModels.ErrorResponse{
+				Message:   "Request validation failed",
+				ErrorCode: 400,
+				Errors:    validationErrors,
+			}
+			errorResponse, _ := json.Marshal(errResp)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
 			return
 		}
@@ -94,7 +104,12 @@ func LogoutRequestBodyValidator(next http.Handler) http.Handler {
 
 		if validationErrors != nil {
 			rbvLogger.Error("[{}]: Logout Request Validation failed")
-			errorResponse, _ := json.Marshal(validationErrors)
+			errResp := AuthModels.ErrorResponse{
+				Message:   "Request validation failed",
+				ErrorCode: 400,
+				Errors:    validationErrors,
+			}
+			errorResponse, _ := json.Marshal(errResp)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
 			return
 		}
@@ -125,7 +140,12 @@ func VerifyTokenRequestBodyValidator(next http.Handler) http.Handler {
 
 		if validationErrors != nil {
 			rbvLogger.Error("[{}]: Validate Token Request Validation failed")
-			errorResponse, _ := json.Marshal(validationErrors)
+			errResp := AuthModels.ErrorResponse{
+				Message:   "Request validation failed",
+				ErrorCode: 400,
+				Errors:    validationErrors,
+			}
+			errorResponse, _ := json.Marshal(errResp)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
 			return
 		}

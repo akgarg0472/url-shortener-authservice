@@ -3,7 +3,6 @@ package auth_service
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -12,7 +11,6 @@ import (
 	AuthModels "github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
-	"github.com/google/uuid"
 )
 
 var (
@@ -54,6 +52,8 @@ func Login(requestId string, loginRequest AuthModels.LoginRequest) (*AuthModels.
 
 	return &AuthModels.LoginResponse{
 		AccessToken: jwtToken,
+		UserId:      user.Id,
+		Name:        user.Email,
 	}, nil
 }
 
@@ -83,23 +83,22 @@ func Signup(requestId string, signupRequest AuthModels.SignupRequest) (*AuthMode
 	}
 
 	signupRequest.Password = string(hashedPassword)
-	signupRequest.UserId = strings.ReplaceAll(uuid.New().String(), "-", "")
 
-	saveSuccess, saveError := AuthDao.SaveUser(requestId, signupRequest)
+	user, saveError := AuthDao.SaveUser(requestId, signupRequest)
 
 	if saveError != nil {
 		logger.Error("[{}]: Error while saving user -> {}", requestId, saveError)
 		return nil, saveError
 	}
 
-	if !saveSuccess {
+	if user == nil {
 		logger.Error("[{}]: Something went wrong while saving user", requestId)
 		return nil, utils.InternalServerErrorResponse()
 	}
 
 	return &AuthModels.SignupResponse{
-		Message: "User created successfully",
-		UserId:  signupRequest.UserId,
+		Message:    "User created successfully",
+		StatusCode: 201,
 	}, nil
 }
 

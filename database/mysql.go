@@ -101,7 +101,7 @@ func initDatabaseSchema() error {
 		return fmt.Errorf("Error creating tables: " + err.Error())
 	}
 
-	logger.Trace("Tables initialized successfully with result: {}", result)
+	logger.Info("Tables initialized successfully with result: {}", result)
 
 	return nil
 }

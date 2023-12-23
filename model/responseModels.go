@@ -2,16 +2,19 @@ package model
 
 type LoginResponse struct {
 	AccessToken string `json:"auth_token"`
+	UserId      string `json:"user_id"`
+	Name        string `json:"name"`
 }
 
 type SignupResponse struct {
-	Message string `json:"message"`
-	UserId  string `json:"user_id"`
+	Message    string `json:"message"`
+	StatusCode int16  `json:"status_code"`
 }
 
 type ErrorResponse struct {
 	Message   interface{} `json:"message"`
 	ErrorCode int16       `json:"error_code"`
+	Errors    interface{} `json:"errors"`
 }
 
 type LogoutResponse struct {

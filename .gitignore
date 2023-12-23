@@ -1,4 +1,4 @@
 vendor/
 logs/
 .env
-./authservice.exe
+*.exe

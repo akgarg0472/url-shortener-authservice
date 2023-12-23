@@ -74,7 +74,7 @@ func loadDotEnv() {
 func loadRouters() *chi.Mux {
 	router := chi.NewRouter()
 
-	router.Use(corsHandler())
+	// router.Use(corsHandler())
 
 	router.Mount("/auth/v1", AuthRouter.AuthRouterV1())
 

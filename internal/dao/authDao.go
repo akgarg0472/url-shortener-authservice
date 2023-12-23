@@ -3,12 +3,14 @@ package dao
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	MySQL "github.com/akgarg0472/urlshortener-auth-service/database"
 	Models "github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	utils "github.com/akgarg0472/urlshortener-auth-service/utils"
+	"github.com/google/uuid"
 )
 
 var (
@@ -95,30 +97,32 @@ func CheckIfUserExistsByEmail(requestId string, email string) (bool, *Models.Err
 	return count > 0, nil
 }
 
-func SaveUser(requestId string, signupRequest Models.SignupRequest) (bool, *Models.ErrorResponse) {
+func SaveUser(requestId string, signupRequest Models.SignupRequest) (*Models.User, *Models.ErrorResponse) {
 	logger.Info("[{}]: Saving user into DB -> {}", requestId, signupRequest)
 
-	var db = MySQL.GetInstance(requestId, "authDao.go")
+	db := MySQL.GetInstance(requestId, "authDao.go")
 
 	if db == nil {
 		logger.Error("[{}]: Error getting DB instance", requestId)
-		return false, utils.InternalServerErrorResponse()
+		return nil, utils.InternalServerErrorResponse()
 	}
 
-	preparedStatement, err := db.Prepare("INSERT INTO users (id, email, password, scopes) VALUES (?, ?, ?, ?)")
+	preparedStatement, err := db.Prepare("INSERT INTO users (id, email, password, scopes, first_name, last_name, phone_number, city, country, zipcode, business_details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 
 	if err != nil {
 		logger.Error("[{}]: Error preparing statement: {}", requestId, err.Error())
-		return false, utils.InternalServerErrorResponse()
+		return nil, utils.InternalServerErrorResponse()
 	}
 
 	defer preparedStatement.Close()
 
-	result, err := preparedStatement.Exec(signupRequest.UserId, signupRequest.Email, signupRequest.Password, "user")
+	userModal := createUserEntity(signupRequest)
+
+	result, err := preparedStatement.Exec(userModal.Id, userModal.Email, userModal.Password, userModal.Scopes, userModal.FirstName, userModal.LastName, userModal.PhoneNumber, userModal.City, userModal.Country, userModal.ZipCode, userModal.BusinessDetails)
 
 	if err != nil {
 		logger.Error("[{}]: Error saving user: {}", requestId, err.Error())
-		return false, utils.ParseMySQLErrorAndReturnErrorResponse(err)
+		return nil, utils.ParseMySQLErrorAndReturnErrorResponse(err)
 	}
 
 	logger.Debug("[{}]: Insert Result -> {}", requestId, result)
@@ -129,12 +133,17 @@ func SaveUser(requestId string, signupRequest Models.SignupRequest) (bool, *Mode
 
 	if rowsAffectedError != nil {
 		logger.Error("[{}]: Error getting rows affected: {}", requestId, rowsAffectedError.Error())
-		return false, utils.InternalServerErrorResponse()
+		return nil, utils.InternalServerErrorResponse()
+	}
+
+	if rowsAffected != 1 {
+		logger.Error("[{}]: Error in rows affected count: {}", requestId, rowsAffected)
+		return nil, utils.InternalServerErrorResponse()
 	}
 
 	logger.Info("[{}]: User saved successfully -> {}", requestId, rowsAffected == 1)
 
-	return rowsAffected == 1, nil
+	return userModal, nil
 }
 
 func doSelectQuery(requestId string, query string, params ...interface{}) (*sql.Rows, error) {
@@ -164,4 +173,20 @@ func doSelectQuery(requestId string, query string, params ...interface{}) (*sql.
 	}
 
 	return rows, nil
+}
+
+func createUserEntity(request Models.SignupRequest) *Models.User {
+	return &Models.User{
+		Id:              strings.ReplaceAll(uuid.New().String(), "-", ""),
+		Email:           request.Email,
+		Password:        request.Password,
+		FirstName:       request.FirstName,
+		LastName:        request.LastName,
+		PhoneNumber:     request.PhoneNumber,
+		City:            request.City,
+		Country:         request.Country,
+		ZipCode:         request.ZipCode,
+		BusinessDetails: request.BusinessDetails,
+		Scopes:          "user",
+	}
 }
