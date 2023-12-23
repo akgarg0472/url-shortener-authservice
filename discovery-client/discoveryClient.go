@@ -57,7 +57,7 @@ func initHeartbeat(heartbeatFrequency time.Duration) {
 		time.Sleep(heartbeatFrequency)
 
 		for {
-			logger.Debug("sending heartbeat -> {}, {}", instanceInfo.App, instanceInfo.InstanceID)
+			logger.Trace("sending heartbeat -> {}, {}", instanceInfo.App, instanceInfo.InstanceID)
 			err := discoveryClient.SendHeartbeat(instanceInfo.App, instanceInfo.InstanceID)
 
 			if err != nil {

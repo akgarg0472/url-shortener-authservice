@@ -7,7 +7,7 @@ import (
 	Middlewares "github.com/akgarg0472/urlshortener-auth-service/internal/middleware"
 )
 
-func AuthRouter() *chi.Mux {
+func AuthRouterV1() *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Route("/login", func(r chi.Router) {

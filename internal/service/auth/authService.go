@@ -26,11 +26,24 @@ func Login(requestId string, loginRequest AuthModels.LoginRequest) (*AuthModels.
 	user, err := AuthDao.GetUserByEmail(requestId, loginRequest.Email)
 
 	if err != nil {
-		logger.Error("[{}]: Error while getting user by email -> {}", requestId, err)
+		logger.Error("[{}]: Error {} getting user by email -> {}", requestId, err.ErrorCode, err.Message)
+
+		if err.ErrorCode == 404 {
+			return nil, &AuthModels.ErrorResponse{
+				Message:   "Invalid credentials",
+				ErrorCode: 401,
+			}
+		}
+
 		return nil, err
 	}
 
-	logger.Debug("[{}]: User -> {}", requestId, user)
+	logger.Trace("[{}]: User -> {}", requestId, user)
+
+	if !verifyPassword(loginRequest.Password, user.Password) {
+		logger.Debug("[{}] invalid credentials provided", requestId)
+		return nil, &AuthModels.ErrorResponse{Message: "Invalid credentials", ErrorCode: 401}
+	}
 
 	jwtToken, jwtError := JwtService.GetInstance().GenerateJwtToken(requestId, *user)
 
@@ -55,7 +68,7 @@ func Signup(requestId string, signupRequest AuthModels.SignupRequest) (*AuthMode
 		return nil, userExistsError
 	}
 
-	logger.Trace("[{}]: User exists -> {}", requestId, strconv.FormatBool(userExists))
+	logger.Debug("[{}]: User exists -> {}", requestId, strconv.FormatBool(userExists))
 
 	if userExists {
 		logger.Error("[{}]: Email already exists -> {}", requestId, signupRequest.Email)
@@ -116,4 +129,9 @@ func ValidateToken(requestId string, validateTokenRequest AuthModels.ValidateTok
 	}
 
 	return tokenValidateResp, nil
+}
+
+// function to validate provided password against the encrypted password stored in DB
+func verifyPassword(rawPassword string, encryptedPassword string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(encryptedPassword), []byte(rawPassword)) == nil
 }
