@@ -198,10 +198,39 @@ func GetForgotPasswordToken(requestId string, email string) (string, *Models.Err
 	}
 
 	if ForgotPasswordToken == "" {
+		logger.Error("[{}] empty forgot password token fetched from DB", requestId)
 		return "", utils.GetErrorResponse("Invalid Forgot Password Token. Request Rejected", 400)
 	}
 
 	return ForgotPasswordToken, nil
+}
+
+func UpdatePassword(requestId string, identity string, newPassword string) (bool, *Models.ErrorResponse) {
+	logger.Info("[{}]: Updating user password into DB", requestId)
+
+	result, updateQueryError := doUpdateQuery(requestId, "UPDATE users SET password=? WHERE id=? OR email=?", newPassword, identity, identity)
+
+	if updateQueryError != nil {
+		return false, updateQueryError
+	}
+
+	rowsAffected, rowsAffectedError := result.RowsAffected()
+
+	if rowsAffectedError != nil {
+		logger.Error("[{}]: Error getting rows affected: {}", requestId, rowsAffectedError.Error())
+		return false, utils.InternalServerErrorResponse()
+	}
+
+	logger.Debug("[{}]: Updated rows number -> {}", requestId, rowsAffected)
+
+	if rowsAffected != 1 {
+		logger.Error("[{}]: Error in rows affected count: {}", requestId, rowsAffected)
+		return false, utils.InternalServerErrorResponse()
+	}
+
+	logger.Info("[{}]: User password updated successfully -> {}", requestId, rowsAffected == 1)
+
+	return rowsAffected == 1, nil
 }
 
 func doSelectQuery(requestId string, query string, params ...interface{}) (*sql.Rows, error) {

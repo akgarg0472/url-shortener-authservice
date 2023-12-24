@@ -82,14 +82,15 @@ func ForgotPassword(responseWriter http.ResponseWriter, httpRequest *http.Reques
 	sendResponseToClient(responseWriter, requestId, forgotPasswordResponse, forgotPasswordError)
 }
 
-func ResetPassword(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+// Handler function to handle the verification of forgot password token verification check
+func VerifyResetPassword(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	requestId := httpRequest.Header.Get("Request-ID")
 
 	queryParams := httpRequest.URL.Query()
 
-	logger.Trace("[{}]: Forgot Password request received on handler -> {}", requestId, queryParams)
+	logger.Trace("[{}]: Forgot Password verify request received on handler -> {}", requestId, queryParams)
 
-	redirectUrl, err := AuthService.ResetPassword(requestId, queryParams)
+	redirectUrl, err := AuthService.VerifyResetPassword(requestId, queryParams)
 
 	if err != nil {
 		sendResponseToClient(responseWriter, requestId, nil, err)
@@ -97,6 +98,20 @@ func ResetPassword(responseWriter http.ResponseWriter, httpRequest *http.Request
 	}
 
 	http.Redirect(responseWriter, httpRequest, redirectUrl, http.StatusSeeOther)
+}
+
+// Handler function to handle password reset (change) request
+func ResetPassword(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+	context := httpRequest.Context()
+
+	requestId := httpRequest.Header.Get("Request-ID")
+	resetPasswordRequest := context.Value("resetPasswordRequest").(AuthModels.ResetPasswordRequest)
+
+	logger.Trace("[{}]: Reset Password request received on handler -> {}", requestId, resetPasswordRequest)
+
+	resetPasswordResponse, resetPasswordError := AuthService.ResetPassword(requestId, resetPasswordRequest)
+
+	sendResponseToClient(responseWriter, requestId, resetPasswordResponse, resetPasswordError)
 }
 
 // Function to send response back to client

@@ -33,3 +33,9 @@ type ForgotPasswordResponse struct {
 	Message    string `json:"message"`
 	StatusCode int    `json:"status_code"`
 }
+
+type ResetPasswordResponse struct {
+	Success    bool   `json:"success"`
+	Message    string `json:"message"`
+	StatusCode int    `json:"status_code"`
+}

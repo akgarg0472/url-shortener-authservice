@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -186,7 +187,7 @@ func ForgotPassword(requestId string, forgotPasswordRequest AuthModels.ForgotPas
 }
 
 // Function to validate forgot password token and redirect to reset password UI page
-func ResetPassword(requestId string, queryParams url.Values) (string, *AuthModels.ErrorResponse) {
+func VerifyResetPassword(requestId string, queryParams url.Values) (string, *AuthModels.ErrorResponse) {
 	emailParam := queryParams["email"]
 	tokenParam := queryParams["token"]
 
@@ -220,13 +221,79 @@ func ResetPassword(requestId string, queryParams url.Values) (string, *AuthModel
 		}
 	}
 
-	AuthDao.UpdateForgotPasswordToken(requestId, email, "")
-
 	redirectUrl := utils.GenerateForgotPasswordTokenRedirectUrl(email, token)
 
 	logger.Debug("[{}] Redirect URL generated is: {}", requestId, redirectUrl)
 
 	return redirectUrl, nil
+}
+
+// Function to actually reset password
+func ResetPassword(requestId string, resetPasswordRequest AuthModels.ResetPasswordRequest) (*AuthModels.ResetPasswordResponse, *AuthModels.ErrorResponse) {
+	logger.Debug("[{}]: Processing Reset password Request", requestId)
+
+	email := resetPasswordRequest.Email
+	resetPasswordToken := resetPasswordRequest.ResetPasswordToken
+	password := resetPasswordRequest.Password
+	confirmPassword := resetPasswordRequest.ConfirmPassword
+
+	// verify and match password
+	if strings.TrimSpace(password) != strings.TrimSpace(confirmPassword) {
+		logger.Error("[{}] Password & confirm Passwords mismatch", requestId)
+
+		return nil, &AuthModels.ErrorResponse{
+			Message:   "Password & confirm Passwords mismatch",
+			ErrorCode: 400,
+		}
+	}
+
+	// fetch forgot password token from DB
+	forgotPasswordTokenFromDatabase, fptfdError := AuthDao.GetForgotPasswordToken(requestId, email)
+
+	if fptfdError != nil {
+		logger.Error("[{}] error fetching forgot password token from DB", requestId)
+		return nil, fptfdError
+	}
+
+	// match provided token with DB token again for double check
+	if strings.TrimSpace(forgotPasswordTokenFromDatabase) != strings.TrimSpace(resetPasswordToken) {
+		logger.Error("[{}] forgot token from DB doesn't match with token provided", requestId)
+
+		return nil, &AuthModels.ErrorResponse{
+			Message:   "Invalid token provided",
+			ErrorCode: 400,
+		}
+	}
+
+	// reset passwords
+	hashedPassword, bcryptError := bcrypt.GenerateFromPassword([]byte(password), 14)
+
+	if bcryptError != nil {
+		logger.Error("[{}]: Error while hashing password -> {}", requestId, bcryptError)
+		return nil, utils.InternalServerErrorResponse()
+	}
+
+	isPasswordUpdated, passwordUpdateErr := AuthDao.UpdatePassword(requestId, email, string(hashedPassword))
+
+	if passwordUpdateErr != nil {
+		return nil, passwordUpdateErr
+	}
+
+	if !isPasswordUpdated {
+		return nil, &AuthModels.ErrorResponse{
+			Message:   "Error resetting password",
+			ErrorCode: 400,
+		}
+	}
+
+	// reset token to default empty string
+	AuthDao.UpdateForgotPasswordToken(requestId, email, "")
+
+	return &AuthModels.ResetPasswordResponse{
+		Success:    true,
+		Message:    "Password reset successfully",
+		StatusCode: 200,
+	}, nil
 }
 
 // function to validate provided password against the encrypted password stored in DB

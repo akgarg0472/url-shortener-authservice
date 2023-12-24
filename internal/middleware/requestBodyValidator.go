@@ -160,9 +160,9 @@ func ForgotPasswordRequestBodyValidator(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 		requestId := httpRequest.Header.Get("Request-ID")
 
-		var ForgotPasswordRequest AuthModels.ForgotPasswordRequest
+		var forgotPasswordRequest AuthModels.ForgotPasswordRequest
 
-		decodeError := decodeRequestBody(httpRequest, &ForgotPasswordRequest)
+		decodeError := decodeRequestBody(httpRequest, &forgotPasswordRequest)
 
 		if decodeError != nil {
 			rbvLogger.Error("[{}]: Error decoding forgot password request body: {}", requestId, decodeError.Error())
@@ -172,7 +172,7 @@ func ForgotPasswordRequestBodyValidator(next http.Handler) http.Handler {
 			return
 		}
 
-		validationErrors := utils.ValidateRequestFields(ForgotPasswordRequest)
+		validationErrors := utils.ValidateRequestFields(forgotPasswordRequest)
 
 		if validationErrors != nil {
 			rbvLogger.Error("[{}]: Forgot Password Request Validation failed")
@@ -186,7 +186,43 @@ func ForgotPasswordRequestBodyValidator(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(httpRequest.Context(), "forgotPasswordRequest", ForgotPasswordRequest)
+		ctx := context.WithValue(httpRequest.Context(), "forgotPasswordRequest", forgotPasswordRequest)
+
+		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
+	})
+}
+
+func ResetPasswordRequestBodyValidator(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+		requestId := httpRequest.Header.Get("Request-ID")
+
+		var resetPasswordRequest AuthModels.ResetPasswordRequest
+
+		decodeError := decodeRequestBody(httpRequest, &resetPasswordRequest)
+
+		if decodeError != nil {
+			rbvLogger.Error("[{}]: Error decoding reset password request body: {}", requestId, decodeError.Error())
+			resp := utils.GetErrorResponse("Invalid request body", 400)
+			errorJsonResponse, _ := utils.ConvertToJsonBytes(resp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorJsonResponse)
+			return
+		}
+
+		validationErrors := utils.ValidateRequestFields(resetPasswordRequest)
+
+		if validationErrors != nil {
+			rbvLogger.Error("[{}]: Reset Password Request Validation failed")
+			errResp := AuthModels.ErrorResponse{
+				Message:   "Request validation failed",
+				ErrorCode: 400,
+				Errors:    validationErrors,
+			}
+			errorResponse, _ := json.Marshal(errResp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
+			return
+		}
+
+		ctx := context.WithValue(httpRequest.Context(), "resetPasswordRequest", resetPasswordRequest)
 
 		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})

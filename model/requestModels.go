@@ -34,6 +34,13 @@ type ForgotPasswordRequest struct {
 	Email string `json:"email" validate:"required"`
 }
 
+type ResetPasswordRequest struct {
+	ResetPasswordToken string `json:"token" validate:"required"`
+	Email              string `json:"email" validate:"required"`
+	Password           string `json:"password" validate:"required"`
+	ConfirmPassword    string `json:"confirm_password" validate:"required"`
+}
+
 func (request LoginRequest) String() string {
 	return fmt.Sprintf("Email: %s", request.Email)
 }
