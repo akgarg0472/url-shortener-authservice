@@ -1,6 +1,7 @@
 package utils
 
 import (
+	AuthModels "github.com/akgarg0472/urlshortener-auth-service/model"
 	Validator "github.com/go-playground/validator/v10"
 )
 
@@ -32,4 +33,29 @@ func convertValidationErrorToMessage(field string, tag string) string {
 	default:
 		return field + " is invalid"
 	}
+}
+
+func ValidateResetPasswordRequestQueryParams(emailParam []string, tokenParam []string) *AuthModels.ErrorResponse {
+	emailParamLength := len(emailParam)
+	tokenParamLength := len(tokenParam)
+
+	if emailParamLength != 1 || tokenParamLength != 1 {
+		var requestErrors = ""
+
+		if emailParamLength != 1 {
+			requestErrors += "'email' is missing, "
+		}
+
+		if tokenParamLength != 1 {
+			requestErrors += "'token' is missing"
+		}
+
+		return &AuthModels.ErrorResponse{
+			Message:   "Invalid Reset Password Request. Missing required query parameters",
+			ErrorCode: 400,
+			Errors:    requestErrors,
+		}
+	}
+
+	return nil
 }

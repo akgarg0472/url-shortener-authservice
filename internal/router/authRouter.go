@@ -38,5 +38,17 @@ func AuthRouterV1() *chi.Mux {
 		r.Post("/", AuthHandler.Logout)
 	})
 
+	router.Route("/forgot-password", func(r chi.Router) {
+		r.Use(Middlewares.AddRequestIdHeader)
+		r.Use(Middlewares.ValidateRequestContentType)
+		r.Use(Middlewares.ForgotPasswordRequestBodyValidator)
+		r.Post("/", AuthHandler.ForgotPassword)
+	})
+
+	router.Route("/reset-password", func(r chi.Router) {
+		r.Use(Middlewares.AddRequestIdHeader)
+		r.Get("/", AuthHandler.ResetPassword)
+	})
+
 	return router
 }

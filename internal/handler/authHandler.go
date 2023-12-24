@@ -68,6 +68,37 @@ func VerifyToken(responseWriter http.ResponseWriter, httpRequest *http.Request) 
 	sendResponseToClient(responseWriter, requestId, validateTokenResponse, validateTokenError)
 }
 
+// Handler Function to handle Forgot password request
+func ForgotPassword(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+	context := httpRequest.Context()
+
+	requestId := httpRequest.Header.Get("Request-ID")
+	forgotPasswordRequest := context.Value("forgotPasswordRequest").(AuthModels.ForgotPasswordRequest)
+
+	logger.Trace("[{}]: Logout request received on handler -> {}", requestId, forgotPasswordRequest)
+
+	forgotPasswordResponse, forgotPasswordError := AuthService.ForgotPassword(requestId, forgotPasswordRequest)
+
+	sendResponseToClient(responseWriter, requestId, forgotPasswordResponse, forgotPasswordError)
+}
+
+func ResetPassword(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+	requestId := httpRequest.Header.Get("Request-ID")
+
+	queryParams := httpRequest.URL.Query()
+
+	logger.Trace("[{}]: Forgot Password request received on handler -> {}", requestId, queryParams)
+
+	redirectUrl, err := AuthService.ResetPassword(requestId, queryParams)
+
+	if err != nil {
+		sendResponseToClient(responseWriter, requestId, nil, err)
+		return
+	}
+
+	http.Redirect(responseWriter, httpRequest, redirectUrl, http.StatusSeeOther)
+}
+
 // Function to send response back to client
 func sendResponseToClient(responseWriter http.ResponseWriter, requestId string, response interface{}, err *AuthModels.ErrorResponse) {
 	if err != nil {

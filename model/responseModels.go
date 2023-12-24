@@ -27,3 +27,9 @@ type ValidateTokenResponse struct {
 	Expiration float64 `json:"expiration"`
 	Success    bool    `json:"success"`
 }
+
+type ForgotPasswordResponse struct {
+	Success    bool   `json:"success"`
+	Message    string `json:"message"`
+	StatusCode int    `json:"status_code"`
+}

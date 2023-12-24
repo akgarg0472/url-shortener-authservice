@@ -2,12 +2,13 @@ package auth_service
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 
 	"golang.org/x/crypto/bcrypt"
 
 	AuthDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao"
-	JwtService "github.com/akgarg0472/urlshortener-auth-service/internal/service/jwt"
+	TokenService "github.com/akgarg0472/urlshortener-auth-service/internal/service/token"
 	AuthModels "github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
@@ -43,7 +44,7 @@ func Login(requestId string, loginRequest AuthModels.LoginRequest) (*AuthModels.
 		return nil, &AuthModels.ErrorResponse{Message: "Invalid credentials", ErrorCode: 401}
 	}
 
-	jwtToken, jwtError := JwtService.GetInstance().GenerateJwtToken(requestId, *user)
+	jwtToken, jwtError := TokenService.GetInstance().GenerateJwtToken(requestId, *user)
 
 	if jwtError != nil {
 		logger.Error("[{}]: Error while generating jwt token -> {}", requestId, jwtError)
@@ -120,7 +121,7 @@ func ValidateToken(requestId string, validateTokenRequest AuthModels.ValidateTok
 	token := validateTokenRequest.AuthToken
 	userId := validateTokenRequest.UserId
 
-	tokenValidateResp, err := JwtService.GetInstance().ValidateJwtToken(requestId, token, userId)
+	tokenValidateResp, err := TokenService.GetInstance().ValidateJwtToken(requestId, token, userId)
 
 	if err != nil {
 		logger.Error("[{}]: Error while validating jwt token -> {}", requestId, err)
@@ -128,6 +129,104 @@ func ValidateToken(requestId string, validateTokenRequest AuthModels.ValidateTok
 	}
 
 	return tokenValidateResp, nil
+}
+
+// Function to generate forgot password token and send forgot password email back to user
+func ForgotPassword(requestId string, forgotPasswordRequest AuthModels.ForgotPasswordRequest) (*AuthModels.ForgotPasswordResponse, *AuthModels.ErrorResponse) {
+	logger.Debug("[{}]: Processing forgot password Request -> {}", requestId, forgotPasswordRequest)
+
+	email := forgotPasswordRequest.Email
+
+	user, err := AuthDao.GetUserByEmail(requestId, email)
+
+	if err != nil {
+		if err.ErrorCode == 404 {
+			err.ErrorCode = 400
+		}
+
+		return nil, &AuthModels.ErrorResponse{
+			Message:   err.Message,
+			Errors:    err.Errors,
+			ErrorCode: err.ErrorCode,
+		}
+	}
+
+	forgotPasswordToken, err := TokenService.GetInstance().GenerateForgotPasswordToken(requestId, *user)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// store token in database for corresponding user
+	dbUpdated, dbUpdateError := AuthDao.UpdateForgotPasswordToken(requestId, user.Id, forgotPasswordToken)
+
+	if dbUpdateError != nil {
+		return nil, dbUpdateError
+	}
+
+	if !dbUpdated {
+		return nil, utils.InternalServerErrorResponse()
+	}
+
+	// now generate reset password link which will be sent on user's email
+	tokenResetLink := utils.GenerateResetPasswordLink(user.Email, forgotPasswordToken)
+
+	// send email to user and return success response
+	emailSent := utils.SendForgotPasswordEmailToUser(user.FirstName+user.LastName, user.Email, tokenResetLink)
+
+	if !emailSent {
+		return nil, utils.InternalServerErrorResponse()
+	}
+
+	return &AuthModels.ForgotPasswordResponse{
+		Success:    true,
+		Message:    "We have sent an email to " + email + " with steps to reset your password",
+		StatusCode: 200,
+	}, nil
+}
+
+// Function to validate forgot password token and redirect to reset password UI page
+func ResetPassword(requestId string, queryParams url.Values) (string, *AuthModels.ErrorResponse) {
+	emailParam := queryParams["email"]
+	tokenParam := queryParams["token"]
+
+	resetPasswordValidationError := utils.ValidateResetPasswordRequestQueryParams(emailParam, tokenParam)
+
+	if resetPasswordValidationError != nil {
+		return "", resetPasswordValidationError
+	}
+
+	email := emailParam[0]
+	token := tokenParam[0]
+
+	tokenValidationError := TokenService.GetInstance().ValidateForgotPasswordToken(requestId, token)
+
+	if tokenValidationError != nil {
+		return "", tokenValidationError
+	}
+
+	forgotPasswordTokenFromDatabase, fptfdError := AuthDao.GetForgotPasswordToken(requestId, email)
+
+	if fptfdError != nil {
+		return "", fptfdError
+	}
+
+	if forgotPasswordTokenFromDatabase != token {
+		logger.Error("[{}] Forgot Token not found in Database", requestId)
+
+		return "", &AuthModels.ErrorResponse{
+			Message:   "Invalid forgot password token. Please try again by requesting for reset password",
+			ErrorCode: 400,
+		}
+	}
+
+	AuthDao.UpdateForgotPasswordToken(requestId, email, "")
+
+	redirectUrl := utils.GenerateForgotPasswordTokenRedirectUrl(email, token)
+
+	logger.Debug("[{}] Redirect URL generated is: {}", requestId, redirectUrl)
+
+	return redirectUrl, nil
 }
 
 // function to validate provided password against the encrypted password stored in DB

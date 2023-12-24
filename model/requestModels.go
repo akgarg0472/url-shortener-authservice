@@ -30,6 +30,10 @@ type ValidateTokenRequest struct {
 	UserId    string `json:"user_id" validate:"required"`
 }
 
+type ForgotPasswordRequest struct {
+	Email string `json:"email" validate:"required"`
+}
+
 func (request LoginRequest) String() string {
 	return fmt.Sprintf("Email: %s", request.Email)
 }

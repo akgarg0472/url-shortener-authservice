@@ -156,6 +156,42 @@ func VerifyTokenRequestBodyValidator(next http.Handler) http.Handler {
 	})
 }
 
+func ForgotPasswordRequestBodyValidator(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+		requestId := httpRequest.Header.Get("Request-ID")
+
+		var ForgotPasswordRequest AuthModels.ForgotPasswordRequest
+
+		decodeError := decodeRequestBody(httpRequest, &ForgotPasswordRequest)
+
+		if decodeError != nil {
+			rbvLogger.Error("[{}]: Error decoding forgot password request body: {}", requestId, decodeError.Error())
+			resp := utils.GetErrorResponse("Invalid request body", 400)
+			errorJsonResponse, _ := utils.ConvertToJsonBytes(resp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorJsonResponse)
+			return
+		}
+
+		validationErrors := utils.ValidateRequestFields(ForgotPasswordRequest)
+
+		if validationErrors != nil {
+			rbvLogger.Error("[{}]: Forgot Password Request Validation failed")
+			errResp := AuthModels.ErrorResponse{
+				Message:   "Request validation failed",
+				ErrorCode: 400,
+				Errors:    validationErrors,
+			}
+			errorResponse, _ := json.Marshal(errResp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
+			return
+		}
+
+		ctx := context.WithValue(httpRequest.Context(), "forgotPasswordRequest", ForgotPasswordRequest)
+
+		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
+	})
+}
+
 func decodeRequestBody(httpRequest *http.Request, ref interface{}) error {
 	return json.NewDecoder(httpRequest.Body).Decode(&ref)
 }
