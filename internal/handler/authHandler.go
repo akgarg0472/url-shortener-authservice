@@ -23,7 +23,7 @@ func Login(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	loginResponse, loginError := AuthService.Login(requestId, loginRequest)
 
-	sendResponseToClient(responseWriter, requestId, loginResponse, loginError)
+	sendResponseToClient(responseWriter, requestId, loginResponse, loginError, 200)
 }
 
 // Handler Function to handle signup request
@@ -37,7 +37,7 @@ func Signup(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	signupResponse, signupError := AuthService.Signup(requestId, signupRequest)
 
-	sendResponseToClient(responseWriter, requestId, signupResponse, signupError)
+	sendResponseToClient(responseWriter, requestId, signupResponse, signupError, 201)
 }
 
 // Handler Function to handle logout request
@@ -51,7 +51,7 @@ func Logout(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	logoutResponse, logoutError := AuthService.Logout(requestId, logoutRequest)
 
-	sendResponseToClient(responseWriter, requestId, logoutResponse, logoutError)
+	sendResponseToClient(responseWriter, requestId, logoutResponse, logoutError, 200)
 }
 
 // Handler Function to handle auth token validation request
@@ -65,7 +65,7 @@ func VerifyToken(responseWriter http.ResponseWriter, httpRequest *http.Request) 
 
 	validateTokenResponse, validateTokenError := AuthService.ValidateToken(requestId, validateTokenRequest)
 
-	sendResponseToClient(responseWriter, requestId, validateTokenResponse, validateTokenError)
+	sendResponseToClient(responseWriter, requestId, validateTokenResponse, validateTokenError, 200)
 }
 
 // Handler Function to handle Forgot password request
@@ -79,7 +79,7 @@ func ForgotPassword(responseWriter http.ResponseWriter, httpRequest *http.Reques
 
 	forgotPasswordResponse, forgotPasswordError := AuthService.ForgotPassword(requestId, forgotPasswordRequest)
 
-	sendResponseToClient(responseWriter, requestId, forgotPasswordResponse, forgotPasswordError)
+	sendResponseToClient(responseWriter, requestId, forgotPasswordResponse, forgotPasswordError, 200)
 }
 
 // Handler function to handle the verification of forgot password token verification check
@@ -93,7 +93,7 @@ func VerifyResetPassword(responseWriter http.ResponseWriter, httpRequest *http.R
 	redirectUrl, err := AuthService.VerifyResetPassword(requestId, queryParams)
 
 	if err != nil {
-		sendResponseToClient(responseWriter, requestId, nil, err)
+		sendResponseToClient(responseWriter, requestId, nil, err, 200)
 		return
 	}
 
@@ -111,11 +111,11 @@ func ResetPassword(responseWriter http.ResponseWriter, httpRequest *http.Request
 
 	resetPasswordResponse, resetPasswordError := AuthService.ResetPassword(requestId, resetPasswordRequest)
 
-	sendResponseToClient(responseWriter, requestId, resetPasswordResponse, resetPasswordError)
+	sendResponseToClient(responseWriter, requestId, resetPasswordResponse, resetPasswordError, 200)
 }
 
 // Function to send response back to client
-func sendResponseToClient(responseWriter http.ResponseWriter, requestId string, response interface{}, err *AuthModels.ErrorResponse) {
+func sendResponseToClient(responseWriter http.ResponseWriter, requestId string, response interface{}, err *AuthModels.ErrorResponse, statusCode int) {
 	if err != nil {
 		errorJson, _ := utils.ConvertToJsonString(err)
 		sendResponseWithStatusAndMessage(responseWriter, int(err.ErrorCode), errorJson)
@@ -138,6 +138,7 @@ func sendResponseToClient(responseWriter http.ResponseWriter, requestId string, 
 	}
 
 	responseWriter.Header().Set("Content-Type", "application/json")
+	responseWriter.WriteHeader(statusCode)
 	responseWriter.Write([]byte(jsonResponse))
 }
 

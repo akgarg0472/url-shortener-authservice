@@ -21,7 +21,7 @@ var (
 
 func InitDB() {
 	once.Do(func() {
-		fmt.Println("initializing DB")
+		logger.Info("initializing DB")
 
 		db, err := sql.Open("mysql", getDatasource())
 

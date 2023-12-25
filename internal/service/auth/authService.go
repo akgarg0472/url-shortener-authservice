@@ -9,6 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	AuthDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao"
+	notification_service "github.com/akgarg0472/urlshortener-auth-service/internal/service/notification"
 	TokenService "github.com/akgarg0472/urlshortener-auth-service/internal/service/token"
 	AuthModels "github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
@@ -98,8 +99,10 @@ func Signup(requestId string, signupRequest AuthModels.SignupRequest) (*AuthMode
 		return nil, utils.InternalServerErrorResponse()
 	}
 
+	notification_service.SendSignupSuccessEmail(requestId, user.Email, utils.GetFormattedName(user.FirstName, user.LastName))
+
 	return &AuthModels.SignupResponse{
-		Message:    "User created successfully",
+		Message:    "Signup successful! You can now explore all of the exciting and amazing features",
 		StatusCode: 201,
 	}, nil
 }
@@ -173,7 +176,7 @@ func ForgotPassword(requestId string, forgotPasswordRequest AuthModels.ForgotPas
 	tokenResetLink := utils.GenerateResetPasswordLink(user.Email, forgotPasswordToken)
 
 	// send email to user and return success response
-	emailSent := utils.SendForgotPasswordEmailToUser(user.FirstName+user.LastName, user.Email, tokenResetLink)
+	emailSent := notification_service.SendForgotPasswordEmail(requestId, user.Email, utils.GetFormattedName(user.FirstName, user.LastName), tokenResetLink)
 
 	if !emailSent {
 		return nil, utils.InternalServerErrorResponse()
@@ -181,7 +184,7 @@ func ForgotPassword(requestId string, forgotPasswordRequest AuthModels.ForgotPas
 
 	return &AuthModels.ForgotPasswordResponse{
 		Success:    true,
-		Message:    "We have sent an email to " + email + " with steps to reset your password",
+		Message:    "We have sent an email to " + email + " with steps to reset your password. Please follow email to continue",
 		StatusCode: 200,
 	}, nil
 }
@@ -288,6 +291,8 @@ func ResetPassword(requestId string, resetPasswordRequest AuthModels.ResetPasswo
 
 	// reset token to default empty string
 	AuthDao.UpdateForgotPasswordToken(requestId, email, "")
+
+	notification_service.SendPasswordChangeSuccessEmail(requestId, email)
 
 	return &AuthModels.ResetPasswordResponse{
 		Success:    true,

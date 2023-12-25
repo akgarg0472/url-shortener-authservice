@@ -47,5 +47,5 @@ func (request LoginRequest) String() string {
 
 func (request SignupRequest) String() string {
 	// TODO: implement method
-	return fmt.Sprintf("Email: %s, UserId: %s", request.Email, request.LastName)
+	return fmt.Sprintf("Email: %s, UserId: %s", request.Email, request.FirstName+request.LastName)
 }

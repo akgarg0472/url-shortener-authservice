@@ -1,4 +1,4 @@
-package jwt_service
+package token_service
 
 import (
 	"fmt"

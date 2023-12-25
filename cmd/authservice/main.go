@@ -16,13 +16,20 @@ import (
 	DB "github.com/akgarg0472/urlshortener-auth-service/database"
 	DiscoveryClient "github.com/akgarg0472/urlshortener-auth-service/discovery-client"
 	AuthRouter "github.com/akgarg0472/urlshortener-auth-service/internal/router"
+	KafkaService "github.com/akgarg0472/urlshortener-auth-service/internal/service/kafka"
+	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	Utils "github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
 func init() {
 	loadDotEnv()
 	DB.InitDB()
+	KafkaService.InitKafka()
 }
+
+var (
+	logger = Logger.GetLogger("main.go")
+)
 
 func main() {
 	// Set up a context to manage the server's shutdown
@@ -33,20 +40,20 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	port := Utils.GetEnvVariable("SERVER_PORT", "8081")
-	_port, _ := strconv.Atoi(port)
+	port, _ := strconv.Atoi(Utils.GetEnvVariable("SERVER_PORT", "8081"))
 
-	DiscoveryClient.InitDiscoveryClient(_port)
+	DiscoveryClient.InitDiscoveryClient(port)
 
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", _port),
+		Addr:    fmt.Sprintf(":%d", port),
 		Handler: loadRouters(),
 	}
 
 	go func() {
-		fmt.Printf("Starting server on port: %d\n", _port)
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
-			fmt.Printf("Error starting server: %v\n", err)
+			logger.Error("Error starting server: {}", err)
+		} else {
+			logger.Info("Server started on port: {}", port)
 		}
 	}()
 
@@ -56,10 +63,10 @@ func main() {
 	<-sigCh
 
 	// Start the graceful server shutdown
-	fmt.Println("Shutting down server gracefully...")
+	logger.Info("Shutting down server gracefully...")
 	err := server.Shutdown(ctx)
 	if err != nil {
-		fmt.Printf("Error during server shutdown: %v\n", err)
+		logger.Error("Error during server shutdown: {}", err)
 	}
 }
 
@@ -93,12 +100,30 @@ func corsHandler() func(next http.Handler) http.Handler {
 }
 
 func cleanupResources(server *http.Server) {
-	fmt.Println("Cleaning up before exiting...")
+	logger.Info("Cleaning up before exiting...")
 
-	DB.CloseDB()
-	DiscoveryClient.UnregisterInstance()
+	dbCloseError := DB.CloseDB()
+
+	if dbCloseError != nil {
+		logger.Error("Error closing DB connection: {}", dbCloseError.Error())
+	}
+
+	discovertClientCloseError := DiscoveryClient.UnregisterInstance()
+
+	if discovertClientCloseError != nil {
+		logger.Error("Error unregistering discovery Client: {}", discovertClientCloseError.Error())
+	}
+
+	kafkaCloseError := KafkaService.CloseKafka()
+
+	if kafkaCloseError != nil {
+		logger.Error("Error closing kafka connection: {}", kafkaCloseError.Error())
+	}
 
 	if server != nil {
-		server.Shutdown(context.Background())
+		serverCloseError := server.Shutdown(context.Background())
+		if serverCloseError != nil {
+			logger.Error("Error shutting down server: {}", serverCloseError.Error())
+		}
 	}
 }
