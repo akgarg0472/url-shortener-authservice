@@ -2,10 +2,13 @@ package consul
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ArthurHlt/go-eureka-client/eureka"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
+	utils "github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
 var (
@@ -15,7 +18,16 @@ var (
 )
 
 func InitDiscoveryClient(port int) {
-	discoveryClient = eureka.NewClient([]string{"http://localhost:8761/eureka/v2"})
+	isDiscoveryClientEnabled, err := strconv.ParseBool(utils.GetEnvVariable("ENABLE_DISCOVERY_CLIENT", ""))
+
+	if err != nil || !isDiscoveryClientEnabled {
+		logger.Info("Discovery client is disabled in configuration")
+		return
+	}
+
+	discClientMachinesIP := strings.Split(utils.GetEnvVariable("DISCOVERY_CLIENT_IP", "http://localhost:8761/eureka/v2"), ",")
+
+	discoveryClient = eureka.NewClient(discClientMachinesIP)
 
 	host := "localhost"
 	appId := "urlshortener-auth-service"
@@ -29,7 +41,7 @@ func InitDiscoveryClient(port int) {
 
 	registerInstance()
 
-	initHeartbeat(30 * time.Second)
+	initHeartbeat()
 }
 
 func UnregisterInstance() error {
@@ -51,9 +63,16 @@ func UnregisterInstance() error {
 	return nil
 }
 
-func initHeartbeat(heartbeatFrequency time.Duration) {
+func initHeartbeat() {
 	go func() {
-		// Wait for heartbeatFrequency time before sending first heartbeat
+		duration, err := strconv.ParseInt(utils.GetEnvVariable("DISCOVERY_CLIENT_HEARTBEAT_FREQEUENCY_DURATION", "30"), 10, 64)
+
+		if err != nil || duration < 30 {
+			duration = 30
+		}
+
+		heartbeatFrequency := time.Duration(duration * int64(time.Second))
+
 		time.Sleep(heartbeatFrequency)
 
 		for {

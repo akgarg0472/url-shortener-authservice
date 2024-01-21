@@ -8,12 +8,12 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	AuthDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao"
-	notification_service "github.com/akgarg0472/urlshortener-auth-service/internal/service/notification"
-	TokenService "github.com/akgarg0472/urlshortener-auth-service/internal/service/token"
-	AuthModels "github.com/akgarg0472/urlshortener-auth-service/model"
+	authDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao"
+	notificationService "github.com/akgarg0472/urlshortener-auth-service/internal/service/notification"
+	tokenService "github.com/akgarg0472/urlshortener-auth-service/internal/service/token"
+	authModels "github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
-	"github.com/akgarg0472/urlshortener-auth-service/utils"
+	utils "github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
 var (
@@ -21,16 +21,16 @@ var (
 )
 
 // Function to handle login request and generate jwt token
-func Login(requestId string, loginRequest AuthModels.LoginRequest) (*AuthModels.LoginResponse, *AuthModels.ErrorResponse) {
+func Login(requestId string, loginRequest authModels.LoginRequest) (*authModels.LoginResponse, *authModels.ErrorResponse) {
 	logger.Info("[{}]: Processing Login Request -> {}", requestId, loginRequest)
 
-	user, err := AuthDao.GetUserByEmail(requestId, loginRequest.Email)
+	user, err := authDao.GetUserByEmail(requestId, loginRequest.Email)
 
 	if err != nil {
 		logger.Error("[{}]: Error {} getting user by email -> {}", requestId, err.ErrorCode, err.Message)
 
 		if err.ErrorCode == 404 {
-			return nil, &AuthModels.ErrorResponse{
+			return nil, &authModels.ErrorResponse{
 				Message:   "Invalid credentials",
 				ErrorCode: 401,
 			}
@@ -42,18 +42,18 @@ func Login(requestId string, loginRequest AuthModels.LoginRequest) (*AuthModels.
 	logger.Trace("[{}]: User -> {}", requestId, user)
 
 	if !verifyPassword(loginRequest.Password, user.Password) {
-		logger.Debug("[{}] invalid credentials provided", requestId)
-		return nil, &AuthModels.ErrorResponse{Message: "Invalid credentials", ErrorCode: 401}
+		logger.Error("[{}] invalid credentials provided", requestId)
+		return nil, &authModels.ErrorResponse{Message: "Invalid credentials", ErrorCode: 401}
 	}
 
-	jwtToken, jwtError := TokenService.GetInstance().GenerateJwtToken(requestId, *user)
+	jwtToken, jwtError := tokenService.GetInstance().GenerateJwtToken(requestId, *user)
 
 	if jwtError != nil {
-		logger.Error("[{}]: Error while generating jwt token -> {}", requestId, jwtError)
+		logger.Error("[{}]: Error generating auth token -> {}", requestId, jwtError)
 		return nil, jwtError
 	}
 
-	return &AuthModels.LoginResponse{
+	return &authModels.LoginResponse{
 		AccessToken: jwtToken,
 		UserId:      user.Id,
 		Name:        user.Email,
@@ -61,10 +61,10 @@ func Login(requestId string, loginRequest AuthModels.LoginRequest) (*AuthModels.
 }
 
 // Function to handle signup request and save user in database
-func Signup(requestId string, signupRequest AuthModels.SignupRequest) (*AuthModels.SignupResponse, *AuthModels.ErrorResponse) {
+func Signup(requestId string, signupRequest authModels.SignupRequest) (*authModels.SignupResponse, *authModels.ErrorResponse) {
 	logger.Info("[{}]: Processing Signup Request -> {}", requestId, signupRequest)
 
-	userExists, userExistsError := AuthDao.CheckIfUserExistsByEmail(requestId, signupRequest.Email)
+	userExists, userExistsError := authDao.CheckIfUserExistsByEmail(requestId, signupRequest.Email)
 
 	if userExistsError != nil {
 		logger.Error("[{}]: Error while checking user exists -> {}", requestId, userExistsError)
@@ -87,7 +87,7 @@ func Signup(requestId string, signupRequest AuthModels.SignupRequest) (*AuthMode
 
 	signupRequest.Password = string(hashedPassword)
 
-	user, saveError := AuthDao.SaveUser(requestId, signupRequest)
+	user, saveError := authDao.SaveUser(requestId, signupRequest)
 
 	if saveError != nil {
 		logger.Error("[{}]: Error while saving user -> {}", requestId, saveError)
@@ -99,33 +99,33 @@ func Signup(requestId string, signupRequest AuthModels.SignupRequest) (*AuthMode
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	notification_service.SendSignupSuccessEmail(requestId, user.Email, utils.GetFormattedName(user.FirstName, user.LastName))
+	notificationService.SendSignupSuccessEmail(requestId, user.Email, user.Name)
 
-	return &AuthModels.SignupResponse{
+	return &authModels.SignupResponse{
 		Message:    "Signup successful! You can now explore all of the exciting and amazing features",
 		StatusCode: 201,
 	}, nil
 }
 
 // Function to handle logout request and invalidates the jwt token
-func Logout(requestId string, logoutRequest AuthModels.LogoutRequest) (*AuthModels.LogoutResponse, *AuthModels.ErrorResponse) {
+func Logout(requestId string, logoutRequest authModels.LogoutRequest) (*authModels.LogoutResponse, *authModels.ErrorResponse) {
 	logger.Info("[{}]: Processing Logout Request -> {}", requestId, logoutRequest)
 
 	// todo: implement logic if required
 
-	return &AuthModels.LogoutResponse{
+	return &authModels.LogoutResponse{
 		Message: "Logout successful",
 	}, nil
 }
 
 // Function to handle validate token request and validates the jwt token
-func ValidateToken(requestId string, validateTokenRequest AuthModels.ValidateTokenRequest) (*AuthModels.ValidateTokenResponse, *AuthModels.ErrorResponse) {
+func ValidateToken(requestId string, validateTokenRequest authModels.ValidateTokenRequest) (*authModels.ValidateTokenResponse, *authModels.ErrorResponse) {
 	logger.Debug("[{}]: Processing Validate Token Request -> {}", requestId, validateTokenRequest)
 
 	token := validateTokenRequest.AuthToken
 	userId := validateTokenRequest.UserId
 
-	tokenValidateResp, err := TokenService.GetInstance().ValidateJwtToken(requestId, token, userId)
+	tokenValidateResp, err := tokenService.GetInstance().ValidateJwtToken(requestId, token, userId)
 
 	if err != nil {
 		logger.Error("[{}]: Error while validating jwt token -> {}", requestId, err)
@@ -136,33 +136,33 @@ func ValidateToken(requestId string, validateTokenRequest AuthModels.ValidateTok
 }
 
 // Function to generate forgot password token and send forgot password email back to user
-func ForgotPassword(requestId string, forgotPasswordRequest AuthModels.ForgotPasswordRequest) (*AuthModels.ForgotPasswordResponse, *AuthModels.ErrorResponse) {
+func GenerateAndSendForgotPasswordToken(requestId string, forgotPasswordRequest authModels.ForgotPasswordRequest) (*authModels.ForgotPasswordResponse, *authModels.ErrorResponse) {
 	logger.Debug("[{}]: Processing forgot password Request -> {}", requestId, forgotPasswordRequest)
 
 	email := forgotPasswordRequest.Email
 
-	user, err := AuthDao.GetUserByEmail(requestId, email)
+	user, err := authDao.GetUserByEmail(requestId, email)
 
 	if err != nil {
 		if err.ErrorCode == 404 {
 			err.ErrorCode = 400
 		}
 
-		return nil, &AuthModels.ErrorResponse{
+		return nil, &authModels.ErrorResponse{
 			Message:   err.Message,
 			Errors:    err.Errors,
 			ErrorCode: err.ErrorCode,
 		}
 	}
 
-	forgotPasswordToken, err := TokenService.GetInstance().GenerateForgotPasswordToken(requestId, *user)
+	forgotPasswordToken, err := tokenService.GetInstance().GenerateForgotPasswordToken(requestId, *user)
 
 	if err != nil {
 		return nil, err
 	}
 
 	// store token in database for corresponding user
-	dbUpdated, dbUpdateError := AuthDao.UpdateForgotPasswordToken(requestId, user.Id, forgotPasswordToken)
+	dbUpdated, dbUpdateError := authDao.UpdateForgotPasswordToken(requestId, user.Email, forgotPasswordToken)
 
 	if dbUpdateError != nil {
 		return nil, dbUpdateError
@@ -172,25 +172,21 @@ func ForgotPassword(requestId string, forgotPasswordRequest AuthModels.ForgotPas
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	// now generate reset password link which will be sent on user's email
-	tokenResetLink := utils.GenerateResetPasswordLink(user.Email, forgotPasswordToken)
+	// now generate forgot password link which will be sent on user's email
+	tokenResetLink := utils.GenerateForgotPasswordLink(user.Email, forgotPasswordToken)
 
 	// send email to user and return success response
-	emailSent := notification_service.SendForgotPasswordEmail(requestId, user.Email, utils.GetFormattedName(user.FirstName, user.LastName), tokenResetLink)
+	notificationService.SendForgotPasswordEmail(requestId, user.Email, user.Name, tokenResetLink)
 
-	if !emailSent {
-		return nil, utils.InternalServerErrorResponse()
-	}
-
-	return &AuthModels.ForgotPasswordResponse{
+	return &authModels.ForgotPasswordResponse{
 		Success:    true,
 		Message:    "We have sent an email to " + email + " with steps to reset your password. Please follow email to continue",
 		StatusCode: 200,
 	}, nil
 }
 
-// Function to validate forgot password token and redirect to reset password UI page
-func VerifyResetPassword(requestId string, queryParams url.Values) (string, *AuthModels.ErrorResponse) {
+// Function to validate forgot password token and return redirect URL to reset password UI page
+func VerifyResetPasswordToken(requestId string, queryParams url.Values) (string, *authModels.ErrorResponse) {
 	emailParam := queryParams["email"]
 	tokenParam := queryParams["token"]
 
@@ -203,13 +199,13 @@ func VerifyResetPassword(requestId string, queryParams url.Values) (string, *Aut
 	email := emailParam[0]
 	token := tokenParam[0]
 
-	tokenValidationError := TokenService.GetInstance().ValidateForgotPasswordToken(requestId, token)
+	tokenValidationError := tokenService.GetInstance().ValidateForgotPasswordToken(requestId, token)
 
 	if tokenValidationError != nil {
 		return "", tokenValidationError
 	}
 
-	forgotPasswordTokenFromDatabase, fptfdError := AuthDao.GetForgotPasswordToken(requestId, email)
+	forgotPasswordTokenFromDatabase, fptfdError := authDao.GetForgotPasswordToken(requestId, email)
 
 	if fptfdError != nil {
 		return "", fptfdError
@@ -218,8 +214,8 @@ func VerifyResetPassword(requestId string, queryParams url.Values) (string, *Aut
 	if forgotPasswordTokenFromDatabase != token {
 		logger.Error("[{}] Forgot Token not found in Database", requestId)
 
-		return "", &AuthModels.ErrorResponse{
-			Message:   "Invalid forgot password token. Please try again by requesting for reset password",
+		return "", &authModels.ErrorResponse{
+			Message:   "Invalid forgot password token. Please try again",
 			ErrorCode: 400,
 		}
 	}
@@ -231,9 +227,9 @@ func VerifyResetPassword(requestId string, queryParams url.Values) (string, *Aut
 	return redirectUrl, nil
 }
 
-// Function to actually reset password
-func ResetPassword(requestId string, resetPasswordRequest AuthModels.ResetPasswordRequest) (*AuthModels.ResetPasswordResponse, *AuthModels.ErrorResponse) {
-	logger.Debug("[{}]: Processing Reset password Request", requestId)
+// Function to actually reset password from forgot-password UI page
+func ResetPassword(requestId string, resetPasswordRequest authModels.ResetPasswordRequest) (*authModels.ResetPasswordResponse, *authModels.ErrorResponse) {
+	logger.Info("[{}]: Processing Reset password Request", requestId)
 
 	email := resetPasswordRequest.Email
 	resetPasswordToken := resetPasswordRequest.ResetPasswordToken
@@ -244,14 +240,14 @@ func ResetPassword(requestId string, resetPasswordRequest AuthModels.ResetPasswo
 	if strings.TrimSpace(password) != strings.TrimSpace(confirmPassword) {
 		logger.Error("[{}] Password & confirm Passwords mismatch", requestId)
 
-		return nil, &AuthModels.ErrorResponse{
+		return nil, &authModels.ErrorResponse{
 			Message:   "Password & confirm Passwords mismatch",
 			ErrorCode: 400,
 		}
 	}
 
 	// fetch forgot password token from DB
-	forgotPasswordTokenFromDatabase, fptfdError := AuthDao.GetForgotPasswordToken(requestId, email)
+	forgotPasswordTokenFromDatabase, fptfdError := authDao.GetForgotPasswordToken(requestId, email)
 
 	if fptfdError != nil {
 		logger.Error("[{}] error fetching forgot password token from DB", requestId)
@@ -262,13 +258,13 @@ func ResetPassword(requestId string, resetPasswordRequest AuthModels.ResetPasswo
 	if strings.TrimSpace(forgotPasswordTokenFromDatabase) != strings.TrimSpace(resetPasswordToken) {
 		logger.Error("[{}] forgot token from DB doesn't match with token provided", requestId)
 
-		return nil, &AuthModels.ErrorResponse{
+		return nil, &authModels.ErrorResponse{
 			Message:   "Invalid token provided",
 			ErrorCode: 400,
 		}
 	}
 
-	// reset passwords
+	// reset password
 	hashedPassword, bcryptError := bcrypt.GenerateFromPassword([]byte(password), 14)
 
 	if bcryptError != nil {
@@ -276,32 +272,24 @@ func ResetPassword(requestId string, resetPasswordRequest AuthModels.ResetPasswo
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	isPasswordUpdated, passwordUpdateErr := AuthDao.UpdatePassword(requestId, email, string(hashedPassword))
+	isPasswordUpdated, passwordUpdateErr := authDao.UpdatePassword(requestId, email, string(hashedPassword))
 
 	if passwordUpdateErr != nil {
 		return nil, passwordUpdateErr
 	}
 
 	if !isPasswordUpdated {
-		return nil, &AuthModels.ErrorResponse{
-			Message:   "Error resetting password",
-			ErrorCode: 400,
-		}
+		return nil, utils.InternalServerErrorResponse()
 	}
 
 	// reset token to default empty string
-	AuthDao.UpdateForgotPasswordToken(requestId, email, "")
+	authDao.UpdateForgotPasswordToken(requestId, email, "")
 
-	notification_service.SendPasswordChangeSuccessEmail(requestId, email)
+	notificationService.SendPasswordChangeSuccessEmail(requestId, email)
 
-	return &AuthModels.ResetPasswordResponse{
+	return &authModels.ResetPasswordResponse{
 		Success:    true,
-		Message:    "Password reset successfully",
+		Message:    "Password changed successfully",
 		StatusCode: 200,
 	}, nil
-}
-
-// function to validate provided password against the encrypted password stored in DB
-func verifyPassword(rawPassword string, encryptedPassword string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(encryptedPassword), []byte(rawPassword)) == nil
 }

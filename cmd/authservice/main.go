@@ -10,12 +10,12 @@ import (
 	"syscall"
 
 	"github.com/go-chi/chi"
-	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 
 	DB "github.com/akgarg0472/urlshortener-auth-service/database"
 	DiscoveryClient "github.com/akgarg0472/urlshortener-auth-service/discovery-client"
-	AuthRouter "github.com/akgarg0472/urlshortener-auth-service/internal/router"
+	queries "github.com/akgarg0472/urlshortener-auth-service/internal/dao"
+	Routers "github.com/akgarg0472/urlshortener-auth-service/internal/router"
 	KafkaService "github.com/akgarg0472/urlshortener-auth-service/internal/service/kafka"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	Utils "github.com/akgarg0472/urlshortener-auth-service/utils"
@@ -24,6 +24,7 @@ import (
 func init() {
 	loadDotEnv()
 	DB.InitDB()
+	queries.InitQueries()
 	KafkaService.InitKafka()
 }
 
@@ -81,22 +82,9 @@ func loadDotEnv() {
 func loadRouters() *chi.Mux {
 	router := chi.NewRouter()
 
-	// router.Use(corsHandler())
-
-	router.Mount("/auth/v1", AuthRouter.AuthRouterV1())
+	router.Mount("/auth/v1", Routers.AuthRouterV1())
 
 	return router
-}
-
-func corsHandler() func(next http.Handler) http.Handler {
-	return cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://*", "http://*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: false,
-		MaxAge:           300,
-	})
 }
 
 func cleanupResources(server *http.Server) {

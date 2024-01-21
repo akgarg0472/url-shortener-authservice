@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
-	"github.com/akgarg0472/urlshortener-auth-service/utils"
+	utils "github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
 var (

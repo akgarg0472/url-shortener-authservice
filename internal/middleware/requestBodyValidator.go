@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	AuthModels "github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
@@ -72,6 +73,18 @@ func SignupRequestBodyValidator(next http.Handler) http.Handler {
 				Message:   "Request validation failed",
 				ErrorCode: 400,
 				Errors:    validationErrors,
+			}
+			errorResponse, _ := json.Marshal(errResp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
+			return
+		}
+
+		if strings.TrimSpace(signupRequest.Password) != strings.TrimSpace(signupRequest.ConfirmPassword) {
+			rbvLogger.Error("[{}]: Signup Request Validation failed. Passwords mismatch")
+			errResp := AuthModels.ErrorResponse{
+				Message:   "Request validation failed",
+				ErrorCode: 400,
+				Errors:    "Password and confirm password mismatch",
 			}
 			errorResponse, _ := json.Marshal(errResp)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
@@ -222,18 +235,20 @@ func ResetPasswordRequestBodyValidator(next http.Handler) http.Handler {
 			return
 		}
 
+		if strings.TrimSpace(resetPasswordRequest.Password) != strings.TrimSpace(resetPasswordRequest.ConfirmPassword) {
+			rbvLogger.Error("[{}]: Reset Password Request Validation failed. Passwords mismatch")
+			errResp := AuthModels.ErrorResponse{
+				Message:   "Request validation failed",
+				ErrorCode: 400,
+				Errors:    "Password and confirm password mismatch",
+			}
+			errorResponse, _ := json.Marshal(errResp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
+			return
+		}
+
 		ctx := context.WithValue(httpRequest.Context(), "resetPasswordRequest", resetPasswordRequest)
 
 		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})
-}
-
-func decodeRequestBody(httpRequest *http.Request, ref interface{}) error {
-	return json.NewDecoder(httpRequest.Body).Decode(&ref)
-}
-
-func writeErrorResponse(responseWriter http.ResponseWriter, statusCode int, message []byte) {
-	responseWriter.Header().Set("Content-Type", "application/json")
-	responseWriter.WriteHeader(statusCode)
-	responseWriter.Write(message)
 }

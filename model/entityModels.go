@@ -4,21 +4,15 @@ import "time"
 
 type User struct {
 	Id                  string
+	Name                string
 	Email               string
 	Password            string
 	Scopes              string
-	FirstName           string
-	LastName            string
-	PhoneNumber         string
-	City                string
-	Country             string
-	ZipCode             string
-	BusinessDetails     string
 	ForgotPasswordToken string
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
+	LastLoginAt         time.Time
+	PasswordChangedAt   time.Time
 }
 
 func (u *User) String() string {
-	return "User [id=" + u.Id + ", email=" + u.Email + ", scopes=" + u.Scopes + ", createdAt=" + u.CreatedAt.String() + ", updatedAt=" + u.UpdatedAt.String() + "]"
+	return "User [id=" + u.Id + ", name=" + u.Name + ", email=" + u.Email + ", scopes=" + u.Scopes + "]"
 }

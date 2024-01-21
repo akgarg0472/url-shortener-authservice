@@ -10,9 +10,10 @@ import (
 )
 
 var (
-	logger      = Logger.GetLogger("kafkaService.go")
-	instance    *KafkaService
-	kafkaWriter *kafka.Writer
+	logger                 = Logger.GetLogger("kafkaService.go")
+	instance               *KafkaService
+	kafkaWriter            *kafka.Writer
+	emailNotificationTopic = ""
 )
 
 type KafkaService struct {
@@ -29,11 +30,13 @@ func GetInstance() *KafkaService {
 	return instance
 }
 
-func getKafkaWriter(kafkaURL, topic string) *kafka.Writer {
+func getKafkaWriter(kafkaURL string, topic string) *kafka.Writer {
 	return &kafka.Writer{
-		Addr:     kafka.TCP(kafkaURL),
-		Topic:    topic,
-		Balancer: &kafka.LeastBytes{},
+		Addr:                   kafka.TCP(kafkaURL),
+		Topic:                  topic,
+		Balancer:               &kafka.LeastBytes{},
+		Async:                  true,
+		AllowAutoTopicCreation: true,
 	}
 }
 
@@ -45,7 +48,7 @@ func InitKafka() {
 
 	kafkaWriter = getKafkaWriter(kafkaURL, kafkaTopic)
 
-	logger.Info("Kafka initialzed successfully: clusterIP={}, topic={}", kafkaWriter.Addr, kafkaWriter.Topic)
+	logger.Info("Kafka initialzed: clusterIP={}, topic={}", kafkaWriter.Addr, kafkaWriter.Topic)
 }
 
 func CloseKafka() error {
@@ -60,7 +63,7 @@ func CloseKafka() error {
 }
 
 func getEmailTopic() string {
-	emailNotificationTopic := utils.GetEnvVariable("KAFKA_TOPIC_EMAIL_NOTIFICATION", "")
+	emailNotificationTopic = utils.GetEnvVariable("KAFKA_TOPIC_EMAIL_NOTIFICATION", "")
 
 	if emailNotificationTopic == "" {
 		panic("KAFKA_TOPIC_EMAIL_NOTIFICATION not found")
@@ -70,7 +73,7 @@ func getEmailTopic() string {
 }
 
 func (kafkaService *KafkaService) PushNotificationEvent(event model.NotificationEvent) bool {
-	logger.Debug("Pushing Event To Kafka Event Bus: {}", event.String())
+	logger.Debug("Pushing Event To Kafka topic [{}]: {}", emailNotificationTopic, event.String())
 
 	if kafkaWriter != nil {
 		msgBytes, msgError := utils.ConvertToJsonBytes(event)

@@ -3,6 +3,7 @@ package token_service
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	Model "github.com/akgarg0472/urlshortener-auth-service/model"
@@ -63,7 +64,7 @@ func (tokenService *TokenService) GenerateJwtToken(requestId string, user Model.
 	return jwtTokenString, nil
 }
 
-// ValidateJwtToken validates the JWT token by checking if it exists in the map and is not expired
+// ValidateJwtToken validates the JWT token by checking if it is valid and not expired
 func (tokenService *TokenService) ValidateJwtToken(requestId string, jwtToken string, userId string) (*Model.ValidateTokenResponse, *Model.ErrorResponse) {
 	logger.Debug("[{}]: Validating JWT token -> {}, {}", requestId, userId, jwtToken)
 
@@ -90,6 +91,11 @@ func (tokenService *TokenService) ValidateJwtToken(requestId string, jwtToken st
 
 	claims, _ := token.Claims.(jwt.MapClaims)
 	uId := claims["uid"].(string)
+
+	if strings.TrimSpace(uId) != strings.TrimSpace(userId) {
+		logger.Error("[{}]: Error validating token -> Invalid userId", requestId)
+		return nil, utils.BadRequestErrorResponse("Passwords mismatch")
+	}
 
 	return &Model.ValidateTokenResponse{
 		UserId:     uId,

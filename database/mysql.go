@@ -3,7 +3,6 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"strconv"
 	"sync"
 
@@ -21,7 +20,7 @@ var (
 
 func InitDB() {
 	once.Do(func() {
-		logger.Info("initializing DB")
+		logger.Info("initializing MySQL database")
 
 		db, err := sql.Open("mysql", getDatasource())
 
@@ -30,23 +29,15 @@ func InitDB() {
 			panic("Error Initializing MySQL Database: " + err.Error())
 		}
 
-		initConnectionPool(db)
-
 		pingErr := db.Ping()
-
 		if pingErr != nil {
 			logger.Fatal("Ping to DB Failed: {}", pingErr.Error())
 			panic("Ping to DB Failed: " + pingErr.Error())
 		}
 
 		instance = db
-
-		initSchemaErr := initDatabaseSchema()
-
-		if initSchemaErr != nil {
-			logger.Fatal("Schema initialization failed: {}", initSchemaErr.Error())
-			panic("Schema initialization failed: " + initSchemaErr.Error())
-		}
+		validateDatabaseSchema()
+		initConnectionPool(db)
 	})
 }
 
@@ -68,7 +59,6 @@ func getDatasource() string {
 func initConnectionPool(db *sql.DB) {
 	maxIdleConnection, _ := strconv.Atoi(Utils.GetEnvVariable("MYSQL_CONNECTION_POOL_MAX_IDLE_CONNECTION", "10"))
 	maxOpenConnection, _ := strconv.Atoi(Utils.GetEnvVariable("MYSQL_CONNECTION_POOL_MAX_OPEN_CONNECTION", "50"))
-
 	db.SetMaxIdleConns(maxIdleConnection)
 	db.SetMaxOpenConns(maxOpenConnection)
 }
@@ -88,20 +78,19 @@ func CloseDB() error {
 	return nil
 }
 
-func initDatabaseSchema() error {
-	createSQLQueries, err := os.ReadFile("database/queries/create_tables.sql")
+func validateDatabaseSchema() {
+	dbName := Utils.GetEnvVariable("MYSQL_DB_NAME", "")
+	tableName := Utils.GetEnvVariable("MYSQL_USERS_TABLE_NAME", "")
+	schemaValidationQuery := fmt.Sprintf("SELECT count(*) FROM information_schema.tables WHERE table_schema = '%s' AND table_name = '%s';", dbName, tableName)
+
+	var count int = 0
+	err := instance.QueryRow(schemaValidationQuery).Scan(&count)
 
 	if err != nil {
-		return fmt.Errorf("Error reading sql file: " + err.Error())
+		panic(fmt.Sprintf("Error validating DB schema: %s", err.Error()))
 	}
 
-	result, err := instance.Exec(string(createSQLQueries))
-
-	if err != nil {
-		return fmt.Errorf("Error creating tables: " + err.Error())
+	if count != 1 {
+		panic(fmt.Sprintf("Expected 1 table with name '%s' but found %d table(s) in '%s' database", tableName, count, dbName))
 	}
-
-	logger.Info("Tables initialized successfully with result: {}", result)
-
-	return nil
 }
