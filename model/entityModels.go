@@ -1,7 +1,5 @@
 package model
 
-import "time"
-
 type User struct {
 	Id                  string
 	Name                string
@@ -9,8 +7,8 @@ type User struct {
 	Password            string
 	Scopes              string
 	ForgotPasswordToken string
-	LastLoginAt         time.Time
-	PasswordChangedAt   time.Time
+	LastLoginAt         int64
+	PasswordChangedAt   int64
 }
 
 func (u *User) String() string {

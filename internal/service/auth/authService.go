@@ -53,6 +53,8 @@ func Login(requestId string, loginRequest authModels.LoginRequest) (*authModels.
 		return nil, jwtError
 	}
 
+	authDao.UpdateTimestamp(requestId, loginRequest.Email, authDao.TIMESTAMP_TYPE_LAST_LOGIN_TIME)
+
 	return &authModels.LoginResponse{
 		AccessToken: jwtToken,
 		UserId:      user.Id,
@@ -284,6 +286,9 @@ func ResetPassword(requestId string, resetPasswordRequest authModels.ResetPasswo
 
 	// reset token to default empty string
 	authDao.UpdateForgotPasswordToken(requestId, email, "")
+
+	// update password changed timestamp
+	authDao.UpdateTimestamp(requestId, email, authDao.TIMESTAMP_TYPE_PASS_CHANGED_AT)
 
 	notificationService.SendPasswordChangeSuccessEmail(requestId, email)
 

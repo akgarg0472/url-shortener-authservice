@@ -15,6 +15,13 @@ var (
 	logger = Logger.GetLogger("authDao.go")
 )
 
+type TimestampType string
+
+const (
+	TIMESTAMP_TYPE_LAST_LOGIN_TIME TimestampType = "LAST_LOGIN_TS"
+	TIMESTAMP_TYPE_PASS_CHANGED_AT TimestampType = "PASSWORD_CHANGED_AT"
+)
+
 func GetUserByEmail(requestId string, email string) (*Models.User, *Models.ErrorResponse) {
 	logger.Info("[{}]: Getting user by email -> {}", requestId, email)
 
@@ -42,12 +49,12 @@ func GetUserByEmail(requestId string, email string) (*Models.User, *Models.Error
 
 		lastLogin, err := time.Parse("2006-01-02 15:04:05", string(lastLoginAt))
 		if err == nil {
-			user.LastLoginAt = lastLogin
+			user.LastLoginAt = lastLogin.UnixMilli()
 		}
 
 		passwordChanged, err := time.Parse("2006-01-02 15:04:05", string(passwordChangedAt))
 		if err == nil {
-			user.PasswordChangedAt = passwordChanged
+			user.PasswordChangedAt = passwordChanged.UnixMilli()
 		}
 
 		users = append(users, user)
@@ -126,7 +133,6 @@ func SaveUser(requestId string, signupRequest Models.SignupRequest) (*Models.Use
 	return user, nil
 }
 
-// updates the value of token stored in DB for the identity (identity could be id or email of user)
 func UpdateForgotPasswordToken(requestId string, identity string, token string) (bool, *Models.ErrorResponse) {
 	logger.Info("[{}]: Updating user token info into DB", requestId)
 
@@ -201,4 +207,34 @@ func UpdatePassword(requestId string, identity string, newPassword string) (bool
 	}
 
 	return false, utils.InternalServerErrorResponse()
+}
+
+func UpdateTimestamp(requestId string, email string, timestampType TimestampType) {
+	timestamp := time.Now().UnixMilli()
+
+	logger.Debug("[{}]: Updating {} into DB: {}", requestId, timestampType, timestamp)
+
+	var query string
+
+	switch timestampType {
+	case TIMESTAMP_TYPE_LAST_LOGIN_TIME:
+		query = UPDATE_LAST_LOGIN_AT_QUERY
+
+	case TIMESTAMP_TYPE_PASS_CHANGED_AT:
+		query = UPDATE_LAST_PASSWORD_CHANGED_AT_QUERY
+	}
+
+	result, updateQueryError := doUpdateQuery(requestId, query, timestamp, email)
+
+	if updateQueryError != nil {
+		return
+	}
+
+	rowsAffected, rowsAffectedError := result.RowsAffected()
+
+	if rowsAffectedError == nil && rowsAffected == 1 {
+		logger.Info("[{}] {} updated successfully", requestId, timestampType)
+	} else {
+		logger.Error("[{}]: Error updating {}: {}", requestId, timestampType, rowsAffectedError.Error())
+	}
 }
