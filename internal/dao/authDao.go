@@ -19,7 +19,6 @@ type TimestampType string
 
 const (
 	TIMESTAMP_TYPE_LAST_LOGIN_TIME TimestampType = "LAST_LOGIN_TS"
-	TIMESTAMP_TYPE_PASS_CHANGED_AT TimestampType = "PASSWORD_CHANGED_AT"
 )
 
 func GetUserByEmail(requestId string, email string) (*Models.User, *Models.ErrorResponse) {
@@ -188,8 +187,9 @@ func GetForgotPasswordToken(requestId string, email string) (string, *Models.Err
 
 func UpdatePassword(requestId string, identity string, newPassword string) (bool, *Models.ErrorResponse) {
 	logger.Info("[{}]: Updating user password into DB", requestId)
+	timestamp := time.Now().UnixMilli()
 
-	result, updateQueryError := doUpdateQuery(requestId, UPDATE_PASSWORD_QUERY, newPassword, identity, identity)
+	result, updateQueryError := doUpdateQuery(requestId, UPDATE_PASSWORD_QUERY, newPassword, timestamp, identity, identity)
 
 	if updateQueryError != nil {
 		return false, updateQueryError
@@ -198,7 +198,7 @@ func UpdatePassword(requestId string, identity string, newPassword string) (bool
 	rowsAffected, rowsAffectedError := result.RowsAffected()
 
 	if rowsAffectedError == nil && rowsAffected == 1 {
-		logger.Info("[{}]: Forgot password token updated", requestId)
+		logger.Info("[{}]: Password updated successfully", requestId)
 		return true, nil
 	}
 
@@ -214,14 +214,16 @@ func UpdateTimestamp(requestId string, email string, timestampType TimestampType
 
 	logger.Debug("[{}]: Updating {} into DB: {}", requestId, timestampType, timestamp)
 
-	var query string
+	var query string = ""
 
 	switch timestampType {
 	case TIMESTAMP_TYPE_LAST_LOGIN_TIME:
 		query = UPDATE_LAST_LOGIN_AT_QUERY
+	}
 
-	case TIMESTAMP_TYPE_PASS_CHANGED_AT:
-		query = UPDATE_LAST_PASSWORD_CHANGED_AT_QUERY
+	if query == "" {
+		logger.Error("[{}]: Invalid timestampType to update. Returning back", requestId)
+		return
 	}
 
 	result, updateQueryError := doUpdateQuery(requestId, query, timestamp, email)

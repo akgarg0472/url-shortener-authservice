@@ -284,12 +284,6 @@ func ResetPassword(requestId string, resetPasswordRequest authModels.ResetPasswo
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	// reset token to default empty string
-	authDao.UpdateForgotPasswordToken(requestId, email, "")
-
-	// update password changed timestamp
-	authDao.UpdateTimestamp(requestId, email, authDao.TIMESTAMP_TYPE_PASS_CHANGED_AT)
-
 	notificationService.SendPasswordChangeSuccessEmail(requestId, email)
 
 	return &authModels.ResetPasswordResponse{

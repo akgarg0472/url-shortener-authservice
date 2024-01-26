@@ -9,6 +9,7 @@ type User struct {
 	ForgotPasswordToken string
 	LastLoginAt         int64
 	PasswordChangedAt   int64
+	IsDeleted           bool
 }
 
 func (u *User) String() string {
