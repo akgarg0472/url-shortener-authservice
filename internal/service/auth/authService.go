@@ -73,7 +73,7 @@ func Signup(requestId string, signupRequest authModels.SignupRequest) (*authMode
 		return nil, userExistsError
 	}
 
-	logger.Debug("[{}]: User exists -> {}", requestId, strconv.FormatBool(userExists))
+	logger.Info("[{}]: User exists -> {}", requestId, strconv.FormatBool(userExists))
 
 	if userExists {
 		logger.Error("[{}]: Email already exists -> {}", requestId, signupRequest.Email)
@@ -88,8 +88,8 @@ func Signup(requestId string, signupRequest authModels.SignupRequest) (*authMode
 	}
 
 	signupRequest.Password = string(hashedPassword)
-
-	user, saveError := authDao.SaveUser(requestId, signupRequest)
+	dbUser := createUserEntity(signupRequest)
+	user, saveError := authDao.SaveUser(requestId, dbUser)
 
 	if saveError != nil {
 		logger.Error("[{}]: Error while saving user -> {}", requestId, saveError)

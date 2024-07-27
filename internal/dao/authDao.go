@@ -1,14 +1,16 @@
 package dao
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 
 	MySQL "github.com/akgarg0472/urlshortener-auth-service/database"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/dao/entity"
+	"github.com/akgarg0472/urlshortener-auth-service/model"
 	Models "github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	utils "github.com/akgarg0472/urlshortener-auth-service/utils"
+	"gorm.io/gorm"
 )
 
 var (
@@ -18,138 +20,116 @@ var (
 type TimestampType string
 
 const (
-	TIMESTAMP_TYPE_LAST_LOGIN_TIME TimestampType = "LAST_LOGIN_TS"
+	TIMESTAMP_TYPE_LAST_LOGIN_TIME TimestampType = "last_login_at"
 )
 
 func GetUserByEmail(requestId string, email string) (*Models.User, *Models.ErrorResponse) {
 	logger.Info("[{}]: Getting user by email -> {}", requestId, email)
 
-	rows, err := doSelectQuery(requestId, SELECT_USER_BY_EMAIL_QUERY, email)
-
-	if err != nil {
-		logger.Error("[{}]: Error executing query: {}", requestId, err.Error())
-		return nil, utils.InternalServerErrorResponse()
-	}
-
-	defer rows.Close()
-
-	users := make([]Models.User, 0)
-
-	for rows.Next() {
-		var user Models.User
-		var lastLoginAt, passwordChangedAt []uint8
-
-		err := rows.Scan(&user.Id, &user.Email, &user.Password, &user.Scopes, &user.Name)
-
-		if err != nil {
-			logger.Error("[{}]: Error parsing query result: {}", requestId, err.Error())
-			return nil, utils.InternalServerErrorResponse()
-		}
-
-		lastLogin, err := time.Parse("2006-01-02 15:04:05", string(lastLoginAt))
-		if err == nil {
-			user.LastLoginAt = lastLogin.UnixMilli()
-		}
-
-		passwordChanged, err := time.Parse("2006-01-02 15:04:05", string(passwordChangedAt))
-		if err == nil {
-			user.PasswordChangedAt = passwordChanged.UnixMilli()
-		}
-
-		users = append(users, user)
-	}
-
-	if len(users) == 0 {
-		logger.Error("[{}]: No user found by email: {}", requestId, email)
-		return nil, utils.GetErrorResponse(fmt.Sprintf("No user found by email: %s", email), 404)
-	} else if len(users) == 1 {
-		logger.Debug("[{}]: user found with email", requestId)
-		return &users[0], nil
-	} else {
-		logger.Error("[{}]: Multiple users found by email: {}", requestId, email)
-		return nil, utils.InternalServerErrorResponse()
-	}
-}
-
-func CheckIfUserExistsByEmail(requestId string, email string) (bool, *Models.ErrorResponse) {
-	logger.Info("[{}]: Checking if user exists -> {}", requestId, email)
-
-	fmt.Println(CHECK_USER_EXISTS_BY_EMAIL_QUERY)
-
-	result, err := doSelectQuery(requestId, CHECK_USER_EXISTS_BY_EMAIL_QUERY, email)
-
-	if err != nil {
-		logger.Error("[{}]: Error executing query: {}", requestId, err.Error())
-		return false, utils.InternalServerErrorResponse()
-	}
-
-	defer result.Close()
-
-	var count int
-
-	for result.Next() {
-		err := result.Scan(&count)
-
-		if err != nil {
-			logger.Error("[{}]: Error parsing query result: {}", requestId, err.Error())
-			return false, utils.InternalServerErrorResponse()
-		}
-	}
-
-	logger.Debug("[{}]: CheckIfUserExistsByEmail Count Query Result -> {}", requestId, count)
-
-	return count == 1, nil
-}
-
-func SaveUser(requestId string, signupRequest Models.SignupRequest) (*Models.User, *Models.ErrorResponse) {
-	logger.Info("[{}]: Saving user into DB -> {}", requestId, signupRequest)
-
-	db := MySQL.GetInstance(requestId, "authDao.go")
+	db := MySQL.GetInstance(requestId, "GetUserByEmail")
 
 	if db == nil {
 		logger.Error("[{}]: Error getting DB instance", requestId)
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	preparedStatement, err := db.Prepare(INSERT_USER_QUERY)
+	var dbUser entity.User
 
-	if err != nil {
-		logger.Error("[{}]: Error preparing insert statement: {}", requestId, err.Error())
+	result := db.First(&dbUser, "email = ?", email)
+
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			logger.Error("[{}]: No user found with email: {}", requestId, email)
+			return nil, utils.GetErrorResponse(fmt.Sprintf("No user found by email: %s", email), 404)
+		} else {
+			logger.Error("[{}]: Error querying user=: {}", requestId, result.Error)
+		}
+
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	defer preparedStatement.Close()
-
-	user := createUserEntity(signupRequest)
-
-	_, insertError := preparedStatement.Exec(user.Id, user.Email, user.Password, user.Scopes, user.Name)
-
-	if insertError != nil {
-		logger.Error("[{}]: Error saving user: {}", requestId, insertError.Error())
-		return nil, utils.ParseMySQLErrorAndReturnErrorResponse(insertError)
+	user := model.User{
+		Id:                  dbUser.Id,
+		Name:                dbUser.Name,
+		Email:               dbUser.Email,
+		Password:            dbUser.Password,
+		Scopes:              dbUser.Scopes,
+		ForgotPasswordToken: getStringOrNil(dbUser.ForgotPasswordToken),
+		LastLoginAt:         getInt64OrNil(dbUser.LastLoginAt),
+		PasswordChangedAt:   getInt64OrNil(dbUser.LastPasswordChangedAt),
+		IsDeleted:           dbUser.IsDeleted,
 	}
+
+	logger.Info("[{}] Fetched user: {}", requestId, user)
+
+	return &user, nil
+}
+
+func CheckIfUserExistsByEmail(requestId string, email string) (bool, *Models.ErrorResponse) {
+	logger.Info("[{}]: Checking if user exists -> {}", requestId, email)
+
+	db := MySQL.GetInstance(requestId, "CheckIfUserExistsByEmail")
+
+	if db == nil {
+		logger.Error("[{}]: Error getting DB instance", requestId)
+		return false, utils.InternalServerErrorResponse()
+	}
+
+	var count int64
+	result := db.Model(&entity.User{}).Where("email = ?", email).Count(&count)
+
+	if result.Error != nil {
+		logger.Error("[{}] error checking for user existence by email", requestId, result.Error)
+		return false, utils.InternalServerErrorResponse()
+	}
+
+	logger.Info("[{}]: CheckIfUserExistsByEmail Count Query Result -> {}", requestId, count)
+	return count == 1, nil
+}
+
+func SaveUser(requestId string, user *entity.User) (*entity.User, *Models.ErrorResponse) {
+	logger.Info("[{}]: Saving user into DB -> {}", requestId, user.Email)
+
+	db := MySQL.GetInstance(requestId, "SaveUser")
+
+	if db == nil {
+		logger.Error("[{}]: Error getting DB instance", requestId)
+		return nil, utils.InternalServerErrorResponse()
+	}
+
+	result := db.Create(user)
+
+	if result.Error != nil {
+		logger.Error("[{}]: Error saving user: {}", requestId, result.Error)
+		return nil, utils.InternalServerErrorResponse()
+	}
+
+	logger.Info("[{}] user created successfully", requestId)
 
 	return user, nil
 }
 
 func UpdateForgotPasswordToken(requestId string, identity string, token string) (bool, *Models.ErrorResponse) {
-	logger.Info("[{}]: Updating user token info into DB", requestId)
+	logger.Info("[{}]: Updating forgot password token: {}", requestId, identity)
 
-	result, updateQueryError := doUpdateQuery(requestId, UPDATE_FORGOT_PASSWORD_TOKEN_QUERY, token, identity, identity)
+	db := MySQL.GetInstance(requestId, "UpdateForgotPasswordToken")
 
-	if updateQueryError != nil {
-		return false, updateQueryError
+	if db == nil {
+		logger.Error("[{}]: Error getting DB instance", requestId)
+		return false, utils.InternalServerErrorResponse()
 	}
 
-	rowsAffected, rowsAffectedError := result.RowsAffected()
+	var affactedRows int64
+	result := db.Model(&entity.User{}).Where("id = ? or email = ?", identity, identity).UpdateColumn("ForgotPasswordToken", token).Count(&affactedRows)
 
-	if rowsAffectedError == nil && rowsAffected == 1 {
+	if result.Error != nil {
+		logger.Error("[{}]: Error updating forgot password token: {}", requestId, result.Error)
+		return false, utils.InternalServerErrorResponse()
+	}
+
+	if affactedRows == 1 {
 		logger.Info("[{}]: Forgot password token updated", requestId)
 		return true, nil
-	}
-
-	if rowsAffectedError != nil {
-		logger.Error("[{}]: Error getting rows affected: {}", requestId, rowsAffectedError.Error())
 	}
 
 	return false, utils.InternalServerErrorResponse()
@@ -158,52 +138,47 @@ func UpdateForgotPasswordToken(requestId string, identity string, token string) 
 func GetForgotPasswordToken(requestId string, email string) (string, *Models.ErrorResponse) {
 	logger.Info("[{}]: Fetching user forgot token info from DB", requestId)
 
-	result, queryErr := doSelectQuery(requestId, GET_FORGOT_TOKEN_BY_EMAIL_QUERY, email)
+	user, err := GetUserByEmail(requestId, email)
 
-	if queryErr != nil {
-		return "", utils.InternalServerErrorResponse()
+	if err != nil {
+		return "", err
 	}
 
-	defer result.Close()
-
-	var forgotPasswordToken sql.NullString
-
-	for result.Next() {
-		err := result.Scan(&forgotPasswordToken)
-
-		if err != nil {
-			logger.Error("[{}]: Error scanning result: {}", requestId, err.Error())
-			return "", utils.InternalServerErrorResponse()
-		}
-	}
-
-	if !forgotPasswordToken.Valid {
+	if user.ForgotPasswordToken == "" {
 		logger.Error("[{}] invalid forgot password token fetched from DB", requestId)
 		return "", utils.GetErrorResponse("Invalid Forgot Password Token. Request Rejected", 400)
 	}
 
-	return forgotPasswordToken.String, nil
+	return user.ForgotPasswordToken, nil
 }
 
 func UpdatePassword(requestId string, identity string, newPassword string) (bool, *Models.ErrorResponse) {
 	logger.Info("[{}]: Updating user password into DB", requestId)
-	timestamp := time.Now().UnixMilli()
 
-	result, updateQueryError := doUpdateQuery(requestId, UPDATE_PASSWORD_QUERY, newPassword, timestamp, identity, identity)
+	db := MySQL.GetInstance(requestId, "UpdatePassword")
 
-	if updateQueryError != nil {
-		return false, updateQueryError
+	if db == nil {
+		logger.Error("[{}]: Error getting DB instance", requestId)
+		return false, utils.InternalServerErrorResponse()
 	}
 
-	rowsAffected, rowsAffectedError := result.RowsAffected()
+	timestamp := time.Now().UnixMilli()
+	var affactedRows int64
 
-	if rowsAffectedError == nil && rowsAffected == 1 {
+	result := db.Model(&entity.User{}).Where("id = ? or email = ?", identity, identity).UpdateColumns(map[string]interface{}{
+		"password":                 newPassword,
+		"forgot_password_token":    "", // Empty string for the token
+		"last_password_changed_at": timestamp,
+	}).Count(&affactedRows)
+
+	if result.Error != nil {
+		logger.Error("[{}]: Error updating password: {}", requestId, result.Error)
+		return false, utils.InternalServerErrorResponse()
+	}
+
+	if affactedRows == 1 {
 		logger.Info("[{}]: Password updated successfully", requestId)
 		return true, nil
-	}
-
-	if rowsAffectedError != nil {
-		logger.Error("[{}]: Error getting rows affected: {}", requestId, rowsAffectedError.Error())
 	}
 
 	return false, utils.InternalServerErrorResponse()
@@ -214,29 +189,24 @@ func UpdateTimestamp(requestId string, email string, timestampType TimestampType
 
 	logger.Debug("[{}]: Updating {} into DB: {}", requestId, timestampType, timestamp)
 
-	var query string = ""
+	db := MySQL.GetInstance(requestId, "UpdateTimestamp")
 
-	switch timestampType {
-	case TIMESTAMP_TYPE_LAST_LOGIN_TIME:
-		query = UPDATE_LAST_LOGIN_AT_QUERY
-	}
-
-	if query == "" {
-		logger.Error("[{}]: Invalid timestampType to update. Returning back", requestId)
+	if db == nil {
+		logger.Error("[{}]: Error getting DB instance", requestId)
 		return
 	}
 
-	result, updateQueryError := doUpdateQuery(requestId, query, timestamp, email)
+	var affactedRows int64
 
-	if updateQueryError != nil {
+	result := db.Model(&entity.User{}).Where("email = ?", email).UpdateColumn(string(timestampType), timestamp).Count(&affactedRows)
+
+	if result.Error != nil {
+		logger.Error("[{}]: Error updating {}: {}", requestId, timestampType, result.Error)
 		return
 	}
 
-	rowsAffected, rowsAffectedError := result.RowsAffected()
-
-	if rowsAffectedError == nil && rowsAffected == 1 {
+	if affactedRows == 1 {
 		logger.Info("[{}] {} updated successfully", requestId, timestampType)
-	} else {
-		logger.Error("[{}]: Error updating {}: {}", requestId, timestampType, rowsAffectedError.Error())
+		return
 	}
 }

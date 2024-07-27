@@ -39,3 +39,11 @@ type ResetPasswordResponse struct {
 	Message    string `json:"message"`
 	StatusCode int    `json:"status_code"`
 }
+
+type OAuthClient struct {
+	Provider    string `json:"provider"`
+	ClientId    string `json:"client_id"`
+	RedirectURI string `json:"redirect_uri"`
+	AccessType  string `json:"access_type"`
+	Scope       string `json:"scope"`
+}

@@ -14,7 +14,6 @@ import (
 
 	DB "github.com/akgarg0472/urlshortener-auth-service/database"
 	DiscoveryClient "github.com/akgarg0472/urlshortener-auth-service/discovery-client"
-	queries "github.com/akgarg0472/urlshortener-auth-service/internal/dao"
 	Routers "github.com/akgarg0472/urlshortener-auth-service/internal/router"
 	KafkaService "github.com/akgarg0472/urlshortener-auth-service/internal/service/kafka"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
@@ -24,7 +23,6 @@ import (
 func init() {
 	loadDotEnv()
 	DB.InitDB()
-	queries.InitQueries()
 	KafkaService.InitKafka()
 }
 
@@ -51,6 +49,8 @@ func main() {
 	}
 
 	go func() {
+		logger.Info("Starting server on port: {}", port)
+
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			logger.Error("Error starting server: {}", err)
 		} else {
@@ -83,6 +83,7 @@ func loadRouters() *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Mount("/auth/v1", Routers.AuthRouterV1())
+	router.Mount("/auth/v1/oauth", Routers.OAuthRouterV1())
 
 	return router
 }
