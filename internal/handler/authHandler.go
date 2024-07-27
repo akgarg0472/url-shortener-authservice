@@ -11,7 +11,7 @@ import (
 var authLogger = Logger.GetLogger("authHandler.go")
 
 // Handler Function to handle login request
-func Login(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+func LoginHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	context := httpRequest.Context()
 
 	requestId := httpRequest.Header.Get("Request-ID")
@@ -25,7 +25,7 @@ func Login(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 }
 
 // Handler Function to handle signup request
-func Signup(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+func SignupHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	context := httpRequest.Context()
 
 	requestId := httpRequest.Header.Get("Request-ID")
@@ -39,7 +39,7 @@ func Signup(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 }
 
 // Handler Function to handle logout request
-func Logout(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+func LogoutHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	context := httpRequest.Context()
 
 	requestId := httpRequest.Header.Get("Request-ID")
@@ -53,7 +53,7 @@ func Logout(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 }
 
 // Handler Function to handle auth token validation request
-func VerifyToken(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+func VerifyTokenHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	context := httpRequest.Context()
 
 	requestId := httpRequest.Header.Get("Request-ID")
@@ -67,7 +67,7 @@ func VerifyToken(responseWriter http.ResponseWriter, httpRequest *http.Request) 
 }
 
 // Handler Function to handle Forgot password request
-func ForgotPassword(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+func ForgotPasswordHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	context := httpRequest.Context()
 
 	requestId := httpRequest.Header.Get("Request-ID")
@@ -81,7 +81,7 @@ func ForgotPassword(responseWriter http.ResponseWriter, httpRequest *http.Reques
 }
 
 // Handler function to handle the verification of forgot password token verification check
-func VerifyResetPassword(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+func VerifyResetPasswordHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	requestId := httpRequest.Header.Get("Request-ID")
 
 	queryParams := httpRequest.URL.Query()
@@ -99,7 +99,7 @@ func VerifyResetPassword(responseWriter http.ResponseWriter, httpRequest *http.R
 }
 
 // Handler function to handle password reset (change) request
-func ResetPassword(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+func ResetPasswordHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	context := httpRequest.Context()
 
 	requestId := httpRequest.Header.Get("Request-ID")

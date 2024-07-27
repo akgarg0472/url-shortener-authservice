@@ -30,19 +30,29 @@ func InitDB() {
 		}
 
 		instance = db
-		initSchema()
+		initSchemas()
 	})
 }
 
-func initSchema() {
-	err := instance.AutoMigrate(&entity.User{})
+func initSchemas() {
+	user := entity.User{}
+	oAuthClient := entity.OAuthClient{}
+
+	err := instance.AutoMigrate(&user)
 
 	if err != nil {
-		logger.Fatal("Error initializing database schema: {}", err.Error())
+		logger.Fatal("Error initializing `{}` database schema: {}", user.TableName(), err.Error())
+		panic("Error Initializing DB schema `{}`: " + err.Error())
+	}
+
+	err = instance.AutoMigrate(&oAuthClient)
+
+	if err != nil {
+		logger.Fatal("Error initializing `{}` database schema: {}", oAuthClient.TableName(), err.Error())
 		panic("Error Initializing DB schema: " + err.Error())
 	}
 
-	logger.Info("Database schema initialized successfully")
+	logger.Info("Initialized `{}`, `{}` schema successfully", user.TableName(), oAuthClient.TableName())
 }
 
 func GetInstance(requestId string, from string) *gorm.DB {

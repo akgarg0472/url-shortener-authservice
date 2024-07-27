@@ -8,7 +8,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	authDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao"
+	authDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao/auth"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/dao/entity"
 	notificationService "github.com/akgarg0472/urlshortener-auth-service/internal/service/notification"
 	tokenService "github.com/akgarg0472/urlshortener-auth-service/internal/service/token"
 	authModels "github.com/akgarg0472/urlshortener-auth-service/model"
@@ -24,7 +25,7 @@ var (
 func Login(requestId string, loginRequest authModels.LoginRequest) (*authModels.LoginResponse, *authModels.ErrorResponse) {
 	logger.Info("[{}]: Processing Login Request -> {}", requestId, loginRequest)
 
-	user, err := authDao.GetUserByEmail(requestId, loginRequest.Email)
+	user, err := authDao.GetUserByEmailOrId(requestId, loginRequest.Email)
 
 	if err != nil {
 		logger.Error("[{}]: Error {} getting user by email -> {}", requestId, err.ErrorCode, err.Message)
@@ -58,7 +59,8 @@ func Login(requestId string, loginRequest authModels.LoginRequest) (*authModels.
 	return &authModels.LoginResponse{
 		AccessToken: jwtToken,
 		UserId:      user.Id,
-		Name:        user.Email,
+		Name:        user.Name,
+		Email:       user.Email,
 	}, nil
 }
 
@@ -89,6 +91,7 @@ func Signup(requestId string, signupRequest authModels.SignupRequest) (*authMode
 
 	signupRequest.Password = string(hashedPassword)
 	dbUser := createUserEntity(signupRequest)
+	dbUser.UserLoginType = entity.EMAIL_PASSWORD
 	user, saveError := authDao.SaveUser(requestId, dbUser)
 
 	if saveError != nil {
@@ -143,7 +146,7 @@ func GenerateAndSendForgotPasswordToken(requestId string, forgotPasswordRequest 
 
 	email := forgotPasswordRequest.Email
 
-	user, err := authDao.GetUserByEmail(requestId, email)
+	user, err := authDao.GetUserByEmailOrId(requestId, email)
 
 	if err != nil {
 		if err.ErrorCode == 404 {

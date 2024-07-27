@@ -1,9 +1,12 @@
 package model
 
+import "fmt"
+
 type LoginResponse struct {
 	AccessToken string `json:"auth_token"`
 	UserId      string `json:"user_id"`
 	Name        string `json:"name"`
+	Email       string `json:"email"`
 }
 
 type SignupResponse struct {
@@ -46,4 +49,20 @@ type OAuthClient struct {
 	RedirectURI string `json:"redirect_uri"`
 	AccessType  string `json:"access_type"`
 	Scope       string `json:"scope"`
+}
+
+type OAuthClientResponse struct {
+	Clients    []OAuthClient `json:"clients"`
+	Success    bool          `json:"success"`
+	StatusCode int           `json:"status_code"`
+}
+
+type OAuthCallbackResponse struct {
+	Success   bool   `json:"success"`
+	UserId    string `json:"user_id"`
+	AuthToken string `json:"auth_token"`
+}
+
+func (c OAuthClient) String() string {
+	return fmt.Sprintf("OAuthClient{Provider: %s, ClientId: %s, RedirectURI: %s, AccessType: %s, Scope: %s}", c.Provider, c.ClientId, c.RedirectURI, c.AccessType, c.Scope)
 }

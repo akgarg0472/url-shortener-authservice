@@ -12,7 +12,7 @@ var (
 	hrhvLogger = Logger.GetLogger("httpRequestHeaderValidator.go")
 )
 
-func ValidateRequestContentType(next http.Handler) http.Handler {
+func ValidateRequestJSONContentType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 		requestId := httpRequest.Header.Get("Request-ID")
 		contentType := httpRequest.Header.Get("Content-Type")

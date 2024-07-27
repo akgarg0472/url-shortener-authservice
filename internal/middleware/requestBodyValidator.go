@@ -252,3 +252,51 @@ func ResetPasswordRequestBodyValidator(next http.Handler) http.Handler {
 		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})
 }
+
+func OAuthCallbackRequestBodyValidator(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+		requestId := httpRequest.Header.Get("Request-ID")
+
+		var oAuthCallbackRequest AuthModels.OAuthCallbackRequest
+
+		decodeError := decodeRequestBody(httpRequest, &oAuthCallbackRequest)
+
+		if decodeError != nil {
+			rbvLogger.Error("[{}]: Error decoding oAuth callback request body: {}", requestId, decodeError.Error())
+			resp := utils.GetErrorResponse("Invalid request body", 400)
+			errorJsonResponse, _ := utils.ConvertToJsonBytes(resp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorJsonResponse)
+			return
+		}
+
+		validationErrors := utils.ValidateRequestFields(oAuthCallbackRequest)
+
+		if validationErrors != nil {
+			rbvLogger.Error("[{}]: OAuth Callback Request Validation failed", requestId)
+			errResp := AuthModels.ErrorResponse{
+				Message:   "Request validation failed",
+				ErrorCode: 400,
+				Errors:    validationErrors,
+			}
+			errorResponse, _ := json.Marshal(errResp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
+			return
+		}
+
+		if oAuthCallbackRequest.Code == "" {
+			rbvLogger.Error("[{}]: OAuth Callback Request Validation failed", requestId)
+			errResp := AuthModels.ErrorResponse{
+				Message:   "Please provide valid auth_code",
+				ErrorCode: 400,
+				Errors:    validationErrors,
+			}
+			errorResponse, _ := json.Marshal(errResp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
+			return
+		}
+
+		ctx := context.WithValue(httpRequest.Context(), "oAuthCallbackRequest", oAuthCallbackRequest)
+
+		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
+	})
+}

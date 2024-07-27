@@ -12,49 +12,49 @@ func AuthRouterV1() *chi.Mux {
 
 	router.Route("/login", func(r chi.Router) {
 		r.Use(Middlewares.AddRequestIdHeader)
-		r.Use(Middlewares.ValidateRequestContentType)
+		r.Use(Middlewares.ValidateRequestJSONContentType)
 		r.Use(Middlewares.LoginRequestBodyValidator)
-		r.Post("/", AuthHandler.Login)
+		r.Post("/", AuthHandler.LoginHandler)
 	})
 
 	router.Route("/signup", func(r chi.Router) {
 		r.Use(Middlewares.AddRequestIdHeader)
-		r.Use(Middlewares.ValidateRequestContentType)
+		r.Use(Middlewares.ValidateRequestJSONContentType)
 		r.Use(Middlewares.SignupRequestBodyValidator)
-		r.Post("/", AuthHandler.Signup)
+		r.Post("/", AuthHandler.SignupHandler)
 	})
 
 	router.Route("/validate-token", func(r chi.Router) {
 		r.Use(Middlewares.AddRequestIdHeader)
-		r.Use(Middlewares.ValidateRequestContentType)
+		r.Use(Middlewares.ValidateRequestJSONContentType)
 		r.Use(Middlewares.VerifyTokenRequestBodyValidator)
-		r.Post("/", AuthHandler.VerifyToken)
+		r.Post("/", AuthHandler.VerifyTokenHandler)
 	})
 
 	router.Route("/logout", func(r chi.Router) {
 		r.Use(Middlewares.AddRequestIdHeader)
-		r.Use(Middlewares.ValidateRequestContentType)
+		r.Use(Middlewares.ValidateRequestJSONContentType)
 		r.Use(Middlewares.LogoutRequestBodyValidator)
-		r.Post("/", AuthHandler.Logout)
+		r.Post("/", AuthHandler.LogoutHandler)
 	})
 
 	router.Route("/forgot-password", func(r chi.Router) {
 		r.Use(Middlewares.AddRequestIdHeader)
-		r.Use(Middlewares.ValidateRequestContentType)
+		r.Use(Middlewares.ValidateRequestJSONContentType)
 		r.Use(Middlewares.ForgotPasswordRequestBodyValidator)
-		r.Post("/", AuthHandler.ForgotPassword)
+		r.Post("/", AuthHandler.ForgotPasswordHandler)
 	})
 
 	router.Route("/verify-reset-password", func(r chi.Router) {
 		r.Use(Middlewares.AddRequestIdHeader)
-		r.Get("/", AuthHandler.VerifyResetPassword)
+		r.Get("/", AuthHandler.VerifyResetPasswordHandler)
 	})
 
 	router.Route("/reset-password", func(r chi.Router) {
 		r.Use(Middlewares.AddRequestIdHeader)
-		r.Use(Middlewares.ValidateRequestContentType)
+		r.Use(Middlewares.ValidateRequestJSONContentType)
 		r.Use(Middlewares.ResetPasswordRequestBodyValidator)
-		r.Post("/", AuthHandler.ResetPassword)
+		r.Post("/", AuthHandler.ResetPasswordHandler)
 	})
 
 	return router

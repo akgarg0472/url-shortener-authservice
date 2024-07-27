@@ -35,11 +35,28 @@ type ResetPasswordRequest struct {
 	ConfirmPassword    string `json:"confirm_password" validate:"required"`
 }
 
+type OAuthProvider string
+
+const (
+	OAUTH_PROVIDER_GOOGLE string = "google"
+	OAUTH_PROVIDER_GITHUB string = "github"
+)
+
+type OAuthCallbackRequest struct {
+	State    string        `json:"state"`
+	Code     string        `json:"auth_code"`
+	Scope    string        `json:"scope"`
+	Provider OAuthProvider `json:"provider"`
+}
+
 func (request LoginRequest) String() string {
 	return fmt.Sprintf("Email: %s", request.Email)
 }
 
 func (request SignupRequest) String() string {
-	// TODO: implement method
 	return fmt.Sprintf("Email: %s, UserId: %s", request.Email, request.Name)
+}
+
+func (r OAuthCallbackRequest) String() string {
+	return fmt.Sprintf("OAuthCallbackRequest {State: %s, Code: %s, Scope: %s, Provider: %s}", r.State, r.Code, r.Scope, r.Provider)
 }

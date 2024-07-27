@@ -72,14 +72,14 @@ func getEmailTopic() string {
 	return emailNotificationTopic
 }
 
-func (kafkaService *KafkaService) PushNotificationEvent(event model.NotificationEvent) bool {
-	logger.Debug("Pushing Event To Kafka topic [{}]: {}", emailNotificationTopic, event.String())
+func (kafkaService *KafkaService) PushNotificationEvent(reqId string, event model.NotificationEvent) bool {
+	logger.Debug("[{}] Pushing Event To Kafka topic [{}]: {}", reqId, emailNotificationTopic, event.String())
 
 	if kafkaWriter != nil {
 		msgBytes, msgError := utils.ConvertToJsonBytes(event)
 
 		if msgError != nil {
-			logger.Error("Error converting notification event to bytes: {}", msgError.Error())
+			logger.Error("[{}] Error converting notification event to bytes: {}", reqId, msgError.Error())
 			return false
 		}
 

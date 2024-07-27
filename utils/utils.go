@@ -11,3 +11,19 @@ func GenerateForgotPasswordLink(email string, forgotPasswordToken string) string
 	backendResetPasswordUrl := GetEnvVariable("BACKEND_RESET_PASSWORD_URL", "auth/v1/reset-password")
 	return backendBaseUrl + backendResetPasswordUrl + "?email=" + email + "&token=" + forgotPasswordToken
 }
+
+func GetStringOrNil(s *string) string {
+	if s != nil {
+		return *s
+	}
+
+	return ""
+}
+
+func GetInt64OrNil(i *int64) int64 {
+	if i != nil {
+		return *i
+	}
+
+	return -1
+}

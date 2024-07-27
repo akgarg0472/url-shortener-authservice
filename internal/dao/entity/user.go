@@ -4,15 +4,24 @@ import (
 	"time"
 )
 
+type LoginType string
+
+const (
+	EMAIL_PASSWORD LoginType = "email_pass"
+	OAUTH_OTP      LoginType = "oauth_otp"
+	OAUTH_ONLY     LoginType = "oauth_only"
+)
+
 type User struct {
-	Id                    string    `gorm:"primaryKey;size:128" json:"id"`                              // varchar(128)
-	Email                 string    `gorm:"uniqueIndex;size:255" json:"email"`                          // varchar(255)
-	Password              string    `gorm:"size:255" json:"password"`                                   // varchar(255)
-	Scopes                string    `gorm:"size:32" json:"scopes"`                                      // varchar(32)
-	Name                  string    `gorm:"size:255" json:"name"`                                       // varchar(255)
-	Bio                   *string   `gorm:"type:text" json:"bio,omitempty"`                             // text
-	ProfilePictureURL     *string   `gorm:"size:255" json:"profile_picture_url,omitempty"`              // varchar(255)
-	Phone                 *string   `gorm:"size:20" json:"phone,omitempty"`                             // varchar(20)
+	Id                    string    `gorm:"primaryKey;size:128" json:"id"`                 // varchar(128)
+	Email                 string    `gorm:"uniqueIndex;size:255" json:"email"`             // varchar(255)
+	Password              string    `gorm:"size:255" json:"password"`                      // varchar(255)
+	Scopes                string    `gorm:"size:32" json:"scopes"`                         // varchar(32)
+	Name                  string    `gorm:"size:255" json:"name"`                          // varchar(255)
+	Bio                   *string   `gorm:"type:text" json:"bio,omitempty"`                // text
+	ProfilePictureURL     *string   `gorm:"size:255" json:"profile_picture_url,omitempty"` // varchar(255)
+	Phone                 *string   `gorm:"size:20" json:"phone,omitempty"`                // varchar(20)
+	UserLoginType         LoginType `gorm:"type:varchar(50)" json:"login_type"`
 	PremiumAccount        bool      `gorm:"default:0" json:"premium_account"`                           // tinyint(1)
 	City                  *string   `gorm:"size:50" json:"city,omitempty"`                              // varchar(50)
 	State                 *string   `gorm:"size:50" json:"state,omitempty"`                             // varchar(50)

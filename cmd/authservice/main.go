@@ -15,6 +15,7 @@ import (
 	DB "github.com/akgarg0472/urlshortener-auth-service/database"
 	DiscoveryClient "github.com/akgarg0472/urlshortener-auth-service/discovery-client"
 	Routers "github.com/akgarg0472/urlshortener-auth-service/internal/router"
+	OAuthService "github.com/akgarg0472/urlshortener-auth-service/internal/service/auth/oauth"
 	KafkaService "github.com/akgarg0472/urlshortener-auth-service/internal/service/kafka"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	Utils "github.com/akgarg0472/urlshortener-auth-service/utils"
@@ -23,6 +24,7 @@ import (
 func init() {
 	loadDotEnv()
 	DB.InitDB()
+	OAuthService.InitOAuthClients()
 	KafkaService.InitKafka()
 }
 

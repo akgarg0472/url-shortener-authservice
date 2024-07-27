@@ -18,7 +18,7 @@ func SendSignupSuccessEmail(requestId string, email string, name string) {
 	recipients := [1]string{email}
 	event := generateNotificationEvent(recipients[:], "Welcome Aboard: Link Shortening Bliss! 🚀🎉", body, true, model.NOTIFICATION_TYPE_EMAIL)
 
-	kafkaService.GetInstance().PushNotificationEvent(*event)
+	kafkaService.GetInstance().PushNotificationEvent(requestId, *event)
 }
 
 func SendForgotPasswordEmail(requestId string, email string, name string, forgotPasswordUrl string) bool {
@@ -28,7 +28,7 @@ func SendForgotPasswordEmail(requestId string, email string, name string, forgot
 	recipients := [1]string{email}
 	event := generateNotificationEvent(recipients[:], "Reset your UrlShortener password", body, true, model.NOTIFICATION_TYPE_EMAIL)
 
-	return kafkaService.GetInstance().PushNotificationEvent(*event)
+	return kafkaService.GetInstance().PushNotificationEvent(requestId, *event)
 }
 
 func SendPasswordChangeSuccessEmail(requestId string, email string) {
@@ -38,7 +38,7 @@ func SendPasswordChangeSuccessEmail(requestId string, email string) {
 	recipients := [1]string{email}
 	event := generateNotificationEvent(recipients[:], "Password changed successfully 🎉", body, true, model.NOTIFICATION_TYPE_EMAIL)
 
-	kafkaService.GetInstance().PushNotificationEvent(*event)
+	kafkaService.GetInstance().PushNotificationEvent(requestId, *event)
 }
 
 func generateNotificationEvent(recipients []string, subject string, body string, html bool, notificationType model.NotificationType) *model.NotificationEvent {
