@@ -2,7 +2,7 @@ package oauth_dao
 
 import (
 	MySQL "github.com/akgarg0472/urlshortener-auth-service/database"
-	"github.com/akgarg0472/urlshortener-auth-service/internal/dao/entity"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/entity"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 )
 
@@ -10,24 +10,24 @@ var (
 	logger = Logger.GetLogger("oAuthDao.go")
 )
 
-func FetchOAuthClients() []entity.OAuthClient {
-	logger.Info("Fetching OAuth clients from database")
+func FetchOAuthProviders() []entity.OAuthProvider {
+	logger.Info("Fetching OAuth providers from database")
 
-	db := MySQL.GetInstance("", "FetchOAuthClients")
+	db := MySQL.GetInstance("", "FetchOAuthProviders")
 
 	if db == nil {
 		logger.Error("Error getting DB instance")
-		panic("Failed to obbtain DB instance")
+		panic("Failed to obtain DB instance")
 	}
 
-	var oAuthClients []entity.OAuthClient
+	var oAuthProviders []entity.OAuthProvider
 
-	result := db.Find(&oAuthClients)
+	result := db.Find(&oAuthProviders)
 
 	if result.Error != nil {
-		logger.Error("Error fetching oAuth clients: {}", result.Error)
+		logger.Error("Error fetching oAuth providers: {}", result.Error)
 		panic(result.Error)
 	}
 
-	return oAuthClients
+	return oAuthProviders
 }

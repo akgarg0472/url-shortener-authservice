@@ -1,6 +1,6 @@
 package logger
 
-type LoggerConfig struct {
+type Config struct {
 	Level          string
 	LogToConsole   bool
 	LogToFile      bool

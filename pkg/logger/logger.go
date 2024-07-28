@@ -8,11 +8,11 @@ import (
 	"time"
 )
 
-var loggerConfig LoggerConfig
+var loggerConfig Config
 var replacer = strings.NewReplacer("{}", "%v")
 
 type Logger struct {
-	config LoggerConfig
+	config Config
 	file   string
 }
 
@@ -20,11 +20,11 @@ func init() {
 	loggerConfig = ReadConfig("logger.conf")
 
 	if loggerConfig.Enabled {
-		__init__(&loggerConfig)
+		initLogger(&loggerConfig)
 	}
 }
 
-func __init__(config *LoggerConfig) {
+func initLogger(config *Config) {
 	log.SetFlags(log.Ldate | log.Ltime)
 
 	if config.LogToFile {

@@ -10,9 +10,9 @@ import (
 func OAuthRouterV1() *chi.Mux {
 	router := chi.NewRouter()
 
-	router.Route("/clients", func(r chi.Router) {
+	router.Route("/providers", func(r chi.Router) {
 		r.Use(Middlewares.AddRequestIdHeader)
-		r.Get("/", OAuthHandler.GetOAuthClientHandler)
+		r.Get("/", OAuthHandler.GetOAuthProvidersHandler)
 	})
 
 	router.Route("/callbacks", func(r chi.Router) {

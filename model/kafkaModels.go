@@ -2,13 +2,8 @@ package model
 
 import (
 	"fmt"
+	enums "github.com/akgarg0472/urlshortener-auth-service/constants"
 	"strings"
-)
-
-type NotificationType string
-
-const (
-	NOTIFICATION_TYPE_EMAIL NotificationType = "EMAIL"
 )
 
 type NotificationEvent struct {
@@ -16,7 +11,7 @@ type NotificationEvent struct {
 	Subject          string
 	Body             string
 	IsHtml           bool
-	NotificationType NotificationType
+	NotificationType enums.NotificationType
 }
 
 func (event *NotificationEvent) String() string {

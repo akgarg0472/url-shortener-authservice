@@ -1,21 +1,19 @@
 package handler
 
 import (
-	"net/http"
-
-	oAuthService "github.com/akgarg0472/urlshortener-auth-service/internal/service/auth/oauth"
+	oauthservice "github.com/akgarg0472/urlshortener-auth-service/internal/service/auth/oauth"
 	"github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
+	"net/http"
 )
 
 var oauthLogger = Logger.GetLogger("authHandler.go")
 
-// Handler Function to handle login request
-func GetOAuthClientHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+func GetOAuthProvidersHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	providers := httpRequest.URL.Query().Get("provider")
-	clientIds := oAuthService.GetOAuthClient(providers)
+	clientIds := oauthservice.GetOAuthProvider(providers)
 
-	response := model.OAuthClientResponse{
+	response := model.OAuthProviderResponse{
 		Clients:    clientIds,
 		Success:    true,
 		StatusCode: 200,
@@ -32,7 +30,7 @@ func OAuthCallbackHandler(responseWriter http.ResponseWriter, httpRequest *http.
 
 	oauthLogger.Trace("[{}]: OAuth Callback request received on handler -> {}", requestId, oAuthCallbackRequest)
 
-	oAuthCallbackResponse, oAuthCallbackError := oAuthService.ProcessCallbackRequest(requestId, oAuthCallbackRequest)
+	oAuthCallbackResponse, oAuthCallbackError := oauthservice.ProcessCallbackRequest(requestId, oAuthCallbackRequest)
 
 	sendResponseToClient(responseWriter, requestId, oAuthCallbackResponse, oAuthCallbackError, 200)
 }

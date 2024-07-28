@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/akgarg0472/urlshortener-auth-service/model"
@@ -16,8 +17,8 @@ var (
 )
 
 const (
-	GOOGLE_ACCESS_TOKEN_URL = "https://oauth2.googleapis.com/token"
-	GOOGLE_USER_INFO_URL    = "https://www.googleapis.com/oauth2/v2/userinfo"
+	GoogleAccessTokenUrl = "https://oauth2.googleapis.com/token"
+	GoogleUserInfoUrl    = "https://www.googleapis.com/oauth2/v2/userinfo"
 )
 
 type GoogleAccessTokenResponse struct {
@@ -52,14 +53,19 @@ func FetchGoogleProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	resp, err := http.Post(GOOGLE_ACCESS_TOKEN_URL, "application/json", bytes.NewBuffer(requestBody))
+	resp, err := http.Post(GoogleAccessTokenUrl, "application/json", bytes.NewBuffer(requestBody))
 
 	if err != nil {
 		logger.Error("[{}] failed to get access token: {}", reqId, err)
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			// do nothing
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		logger.Error("[{}] invalid status code received from access token request: {}", reqId, resp.StatusCode)
@@ -74,7 +80,7 @@ func FetchGoogleProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 	}
 
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", GOOGLE_USER_INFO_URL, nil)
+	req, err := http.NewRequest("GET", GoogleUserInfoUrl, nil)
 
 	if err != nil {
 		logger.Error("[{}] failed to create user info request: {}", reqId, err)
@@ -90,7 +96,12 @@ func FetchGoogleProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			// do nothing
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		logger.Error("[{}] invalid status code received from user info request: {}", reqId, resp.StatusCode)
@@ -104,10 +115,9 @@ func FetchGoogleProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 	}
 
 	return &ProfileInfo{
-		Id:             userInfoResponse.Id,
+		OAuthId:        userInfoResponse.Id,
 		Name:           userInfoResponse.Name,
 		ProfilePicture: userInfoResponse.ProfilePicture,
 		Email:          userInfoResponse.Email,
-		Username:       "",
 	}, nil
 }

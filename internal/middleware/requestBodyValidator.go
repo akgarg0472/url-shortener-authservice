@@ -8,14 +8,17 @@ import (
 
 	AuthModels "github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
-	utils "github.com/akgarg0472/urlshortener-auth-service/utils"
+	"github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
 var rbvLogger = Logger.GetLogger("requestBodyValidator.go")
+var requestIdHeaderName = "Request-ID"
+var invalidRequestBodyMessage = "Invalid request body"
+var requestValidationFailedMessage = "Request validation failed"
 
 func LoginRequestBodyValidator(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
-		requestId := httpRequest.Header.Get("Request-ID")
+		requestId := httpRequest.Header.Get(requestIdHeaderName)
 
 		var loginRequest AuthModels.LoginRequest
 
@@ -23,7 +26,7 @@ func LoginRequestBodyValidator(next http.Handler) http.Handler {
 
 		if decodeError != nil {
 			rbvLogger.Error("[{}]: Error decoding login request body: {}", requestId, decodeError.Error())
-			resp := utils.GetErrorResponse("Invalid request body", 400)
+			resp := utils.GetErrorResponse(invalidRequestBodyMessage, 400)
 			errorResponseJson, _ := utils.ConvertToJsonBytes(resp)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponseJson)
 			return
@@ -34,7 +37,7 @@ func LoginRequestBodyValidator(next http.Handler) http.Handler {
 		if validationErrors != nil {
 			rbvLogger.Error("[{}]: Login Request Validation failed: {}", requestId, validationErrors)
 			errResp := AuthModels.ErrorResponse{
-				Message:   "Request validation failed",
+				Message:   requestValidationFailedMessage,
 				ErrorCode: 400,
 				Errors:    validationErrors,
 			}
@@ -51,7 +54,7 @@ func LoginRequestBodyValidator(next http.Handler) http.Handler {
 
 func SignupRequestBodyValidator(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
-		requestId := httpRequest.Header.Get("Request-ID")
+		requestId := httpRequest.Header.Get(requestIdHeaderName)
 
 		var signupRequest AuthModels.SignupRequest
 
@@ -59,7 +62,7 @@ func SignupRequestBodyValidator(next http.Handler) http.Handler {
 
 		if decodeError != nil {
 			rbvLogger.Error("[{}]: Error decoding signup request body: {}", requestId, decodeError.Error())
-			resp := utils.GetErrorResponse("Invalid request body", 400)
+			resp := utils.GetErrorResponse(invalidRequestBodyMessage, 400)
 			errorJsonResponse, _ := utils.ConvertToJsonBytes(resp)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorJsonResponse)
 			return
@@ -70,7 +73,7 @@ func SignupRequestBodyValidator(next http.Handler) http.Handler {
 		if validationErrors != nil {
 			rbvLogger.Error("[{}]: Signup Request Validation failed")
 			errResp := AuthModels.ErrorResponse{
-				Message:   "Request validation failed",
+				Message:   requestValidationFailedMessage,
 				ErrorCode: 400,
 				Errors:    validationErrors,
 			}
@@ -82,7 +85,7 @@ func SignupRequestBodyValidator(next http.Handler) http.Handler {
 		if strings.TrimSpace(signupRequest.Password) != strings.TrimSpace(signupRequest.ConfirmPassword) {
 			rbvLogger.Error("[{}]: Signup Request Validation failed. Passwords mismatch")
 			errResp := AuthModels.ErrorResponse{
-				Message:   "Request validation failed",
+				Message:   requestValidationFailedMessage,
 				ErrorCode: 400,
 				Errors:    "Password and confirm password mismatch",
 			}
@@ -99,7 +102,7 @@ func SignupRequestBodyValidator(next http.Handler) http.Handler {
 
 func LogoutRequestBodyValidator(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
-		requestId := httpRequest.Header.Get("Request-ID")
+		requestId := httpRequest.Header.Get(requestIdHeaderName)
 
 		var logoutRequest AuthModels.LogoutRequest
 
@@ -107,7 +110,7 @@ func LogoutRequestBodyValidator(next http.Handler) http.Handler {
 
 		if decodeError != nil {
 			rbvLogger.Error("[{}]: Error decoding logout request body: {}", requestId, decodeError.Error())
-			resp := utils.GetErrorResponse("Invalid request body", 400)
+			resp := utils.GetErrorResponse(invalidRequestBodyMessage, 400)
 			errorJsonResponse, _ := utils.ConvertToJsonBytes(resp)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorJsonResponse)
 			return
@@ -118,7 +121,7 @@ func LogoutRequestBodyValidator(next http.Handler) http.Handler {
 		if validationErrors != nil {
 			rbvLogger.Error("[{}]: Logout Request Validation failed")
 			errResp := AuthModels.ErrorResponse{
-				Message:   "Request validation failed",
+				Message:   requestValidationFailedMessage,
 				ErrorCode: 400,
 				Errors:    validationErrors,
 			}
@@ -135,7 +138,7 @@ func LogoutRequestBodyValidator(next http.Handler) http.Handler {
 
 func VerifyTokenRequestBodyValidator(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
-		requestId := httpRequest.Header.Get("Request-ID")
+		requestId := httpRequest.Header.Get(requestIdHeaderName)
 
 		var validateTokenRequest AuthModels.ValidateTokenRequest
 
@@ -143,7 +146,7 @@ func VerifyTokenRequestBodyValidator(next http.Handler) http.Handler {
 
 		if decodeError != nil {
 			rbvLogger.Error("[{}]: Error decoding validate token request body: {}", requestId, decodeError.Error())
-			resp := utils.GetErrorResponse("Invalid request body", 400)
+			resp := utils.GetErrorResponse(invalidRequestBodyMessage, 400)
 			errorJsonResponse, _ := utils.ConvertToJsonBytes(resp)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorJsonResponse)
 			return
@@ -154,7 +157,7 @@ func VerifyTokenRequestBodyValidator(next http.Handler) http.Handler {
 		if validationErrors != nil {
 			rbvLogger.Error("[{}]: Validate Token Request Validation failed")
 			errResp := AuthModels.ErrorResponse{
-				Message:   "Request validation failed",
+				Message:   requestValidationFailedMessage,
 				ErrorCode: 400,
 				Errors:    validationErrors,
 			}
@@ -171,7 +174,7 @@ func VerifyTokenRequestBodyValidator(next http.Handler) http.Handler {
 
 func ForgotPasswordRequestBodyValidator(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
-		requestId := httpRequest.Header.Get("Request-ID")
+		requestId := httpRequest.Header.Get(requestIdHeaderName)
 
 		var forgotPasswordRequest AuthModels.ForgotPasswordRequest
 
@@ -179,7 +182,7 @@ func ForgotPasswordRequestBodyValidator(next http.Handler) http.Handler {
 
 		if decodeError != nil {
 			rbvLogger.Error("[{}]: Error decoding forgot password request body: {}", requestId, decodeError.Error())
-			resp := utils.GetErrorResponse("Invalid request body", 400)
+			resp := utils.GetErrorResponse(invalidRequestBodyMessage, 400)
 			errorJsonResponse, _ := utils.ConvertToJsonBytes(resp)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorJsonResponse)
 			return
@@ -190,7 +193,7 @@ func ForgotPasswordRequestBodyValidator(next http.Handler) http.Handler {
 		if validationErrors != nil {
 			rbvLogger.Error("[{}]: Forgot Password Request Validation failed")
 			errResp := AuthModels.ErrorResponse{
-				Message:   "Request validation failed",
+				Message:   requestValidationFailedMessage,
 				ErrorCode: 400,
 				Errors:    validationErrors,
 			}
@@ -207,7 +210,7 @@ func ForgotPasswordRequestBodyValidator(next http.Handler) http.Handler {
 
 func ResetPasswordRequestBodyValidator(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
-		requestId := httpRequest.Header.Get("Request-ID")
+		requestId := httpRequest.Header.Get(requestIdHeaderName)
 
 		var resetPasswordRequest AuthModels.ResetPasswordRequest
 
@@ -215,7 +218,7 @@ func ResetPasswordRequestBodyValidator(next http.Handler) http.Handler {
 
 		if decodeError != nil {
 			rbvLogger.Error("[{}]: Error decoding reset password request body: {}", requestId, decodeError.Error())
-			resp := utils.GetErrorResponse("Invalid request body", 400)
+			resp := utils.GetErrorResponse(invalidRequestBodyMessage, 400)
 			errorJsonResponse, _ := utils.ConvertToJsonBytes(resp)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorJsonResponse)
 			return
@@ -226,7 +229,7 @@ func ResetPasswordRequestBodyValidator(next http.Handler) http.Handler {
 		if validationErrors != nil {
 			rbvLogger.Error("[{}]: Reset Password Request Validation failed")
 			errResp := AuthModels.ErrorResponse{
-				Message:   "Request validation failed",
+				Message:   requestValidationFailedMessage,
 				ErrorCode: 400,
 				Errors:    validationErrors,
 			}
@@ -238,7 +241,7 @@ func ResetPasswordRequestBodyValidator(next http.Handler) http.Handler {
 		if strings.TrimSpace(resetPasswordRequest.Password) != strings.TrimSpace(resetPasswordRequest.ConfirmPassword) {
 			rbvLogger.Error("[{}]: Reset Password Request Validation failed. Passwords mismatch")
 			errResp := AuthModels.ErrorResponse{
-				Message:   "Request validation failed",
+				Message:   requestValidationFailedMessage,
 				ErrorCode: 400,
 				Errors:    "Password and confirm password mismatch",
 			}
@@ -255,7 +258,7 @@ func ResetPasswordRequestBodyValidator(next http.Handler) http.Handler {
 
 func OAuthCallbackRequestBodyValidator(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
-		requestId := httpRequest.Header.Get("Request-ID")
+		requestId := httpRequest.Header.Get(requestIdHeaderName)
 
 		var oAuthCallbackRequest AuthModels.OAuthCallbackRequest
 
@@ -263,7 +266,7 @@ func OAuthCallbackRequestBodyValidator(next http.Handler) http.Handler {
 
 		if decodeError != nil {
 			rbvLogger.Error("[{}]: Error decoding oAuth callback request body: {}", requestId, decodeError.Error())
-			resp := utils.GetErrorResponse("Invalid request body", 400)
+			resp := utils.GetErrorResponse(invalidRequestBodyMessage, 400)
 			errorJsonResponse, _ := utils.ConvertToJsonBytes(resp)
 			writeErrorResponse(responseWriter, http.StatusBadRequest, errorJsonResponse)
 			return
@@ -274,7 +277,7 @@ func OAuthCallbackRequestBodyValidator(next http.Handler) http.Handler {
 		if validationErrors != nil {
 			rbvLogger.Error("[{}]: OAuth Callback Request Validation failed", requestId)
 			errResp := AuthModels.ErrorResponse{
-				Message:   "Request validation failed",
+				Message:   requestValidationFailedMessage,
 				ErrorCode: 400,
 				Errors:    validationErrors,
 			}

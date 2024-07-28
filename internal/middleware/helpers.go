@@ -12,5 +12,8 @@ func decodeRequestBody(httpRequest *http.Request, ref interface{}) error {
 func writeErrorResponse(responseWriter http.ResponseWriter, statusCode int, message []byte) {
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(statusCode)
-	responseWriter.Write(message)
+	_, err := responseWriter.Write(message)
+	if err != nil {
+		return
+	}
 }

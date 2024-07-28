@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -24,7 +25,7 @@ import (
 func init() {
 	loadDotEnv()
 	DB.InitDB()
-	OAuthService.InitOAuthClients()
+	OAuthService.InitOAuthProviders()
 	KafkaService.InitKafka()
 }
 
@@ -53,7 +54,7 @@ func main() {
 	go func() {
 		logger.Info("Starting server on port: {}", port)
 
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("Error starting server: {}", err)
 		} else {
 			logger.Info("Server started on port: {}", port)
@@ -99,10 +100,10 @@ func cleanupResources(server *http.Server) {
 		logger.Error("Error closing DB connection: {}", dbCloseError.Error())
 	}
 
-	discovertClientCloseError := DiscoveryClient.UnregisterInstance()
+	discoveryClientCloseError := DiscoveryClient.UnregisterInstance()
 
-	if discovertClientCloseError != nil {
-		logger.Error("Error unregistering discovery Client: {}", discovertClientCloseError.Error())
+	if discoveryClientCloseError != nil {
+		logger.Error("Error unregistering discovery Client: {}", discoveryClientCloseError.Error())
 	}
 
 	kafkaCloseError := KafkaService.CloseKafka()

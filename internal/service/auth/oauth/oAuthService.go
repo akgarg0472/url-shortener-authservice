@@ -2,10 +2,11 @@ package oauth_service
 
 import (
 	"fmt"
+	enums "github.com/akgarg0472/urlshortener-auth-service/constants"
+	entity2 "github.com/akgarg0472/urlshortener-auth-service/internal/entity"
 	"strings"
 
 	authDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao/auth"
-	"github.com/akgarg0472/urlshortener-auth-service/internal/dao/entity"
 	oauthDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao/oauth"
 	notificationService "github.com/akgarg0472/urlshortener-auth-service/internal/service/notification"
 	tokenService "github.com/akgarg0472/urlshortener-auth-service/internal/service/token"
@@ -16,20 +17,20 @@ import (
 )
 
 var (
-	oAuthClientMapping map[string]model.OAuthClient
-	logger             = Logger.GetLogger("oAuthService.go")
+	oAuthProvidersMapping map[string]model.OAuthProvider
+	logger                = Logger.GetLogger("oAuthService.go")
 )
 
 type ProfileInfo struct {
-	Id             string
+	OAuthId        string
 	Name           string
 	ProfilePicture string
 	Email          string
-	Username       string
+	OAuthProvider  string
 }
 
 func (p ProfileInfo) String() string {
-	return fmt.Sprintf(`{"Id":"%s", "Name":"%s", "ProfilePicture":"%s", "Email":"%s", "Username":"%s"}`, p.Id, p.Name, p.ProfilePicture, p.Email, p.Username)
+	return fmt.Sprintf(`{"OAuthId":"%s", "Name":"%s", "ProfilePicture":"%s", "Email":"%s"}`, p.OAuthId, p.Name, p.ProfilePicture, p.Email)
 }
 
 type AccessTokenResponse struct {
@@ -37,35 +38,45 @@ type AccessTokenResponse struct {
 	TokenType   string
 }
 
-func InitOAuthClients() {
-	clients := oauthDao.FetchOAuthClients()
+func InitOAuthProviders() {
+	logger.Info("Initializing oAuth providers")
+	clients := oauthDao.FetchOAuthProviders()
 
-	if oAuthClientMapping == nil {
-		oAuthClientMapping = make(map[string]model.OAuthClient)
+	if oAuthProvidersMapping == nil {
+		oAuthProvidersMapping = make(map[string]model.OAuthProvider)
 	}
 
 	for _, _client := range clients {
-		client := model.OAuthClient{
+		client := model.OAuthProvider{
 			Provider:    _client.Provider,
 			ClientId:    _client.ClientID,
+			BaseUrl:     _client.BaseUrl,
 			RedirectURI: _client.RedirectURI,
 			AccessType:  _client.AccessType,
 			Scope:       _client.Scope,
 		}
 
-		oAuthClientMapping[client.Provider] = client
+		oAuthProvidersMapping[client.Provider] = client
 	}
 
-	logger.Debug("Loaded oAuth clients: {}", oAuthClientMapping)
+	logger.Debug("Loaded oAuth providers: {}", oAuthProvidersMapping)
 }
 
-func GetOAuthClient(query string) []model.OAuthClient {
+func GetOAuthProvider(query string) []model.OAuthProvider {
+	var clients []model.OAuthProvider
+
+	if query == "" {
+		for _, client := range oAuthProvidersMapping {
+			clients = append(clients, client)
+		}
+
+		return clients
+	}
+
 	providers := strings.Split(query, ",")
 
-	clients := []model.OAuthClient{}
-
 	for _, provider := range providers {
-		if client, exists := oAuthClientMapping[provider]; exists {
+		if client, exists := oAuthProvidersMapping[provider]; exists {
 			clients = append(clients, client)
 		}
 	}
@@ -73,9 +84,12 @@ func GetOAuthClient(query string) []model.OAuthClient {
 	return clients
 }
 
-func ProcessCallbackRequest(requestId string, oAuthCallbackRequest model.OAuthCallbackRequest) (*model.OAuthCallbackResponse, *model.ErrorResponse) {
+func ProcessCallbackRequest(
+	requestId string,
+	oAuthCallbackRequest model.OAuthCallbackRequest,
+) (*model.OAuthCallbackResponse, *model.ErrorResponse) {
 	logger.Info("[{}] oAuth callback request received: {}", requestId, oAuthCallbackRequest)
-
+	var newUser bool
 	profileInfo, err := getProfileInfo(requestId, oAuthCallbackRequest)
 
 	if err != nil {
@@ -84,13 +98,14 @@ func ProcessCallbackRequest(requestId string, oAuthCallbackRequest model.OAuthCa
 	}
 
 	// checks if user is registered or not
-	identifier := getIdentifier(*profileInfo)
-	user, err := authDao.GetUserByEmailOrId(requestId, identifier)
+	user, err := authDao.GetUserByOAuthId(requestId, profileInfo.OAuthId)
 
 	if user != nil {
 		logger.Info("[{}] user is already registered", requestId)
-	} else if user == nil && err.ErrorCode == 404 {
+		newUser = false
+	} else if err.ErrorCode == 404 {
 		logger.Info("[{}] user is not registered, going to register it", requestId)
+		newUser = true
 		registeredUser, err := registerUser(requestId, *profileInfo)
 
 		if err != nil {
@@ -104,7 +119,7 @@ func ProcessCallbackRequest(requestId string, oAuthCallbackRequest model.OAuthCa
 			notificationService.SendSignupSuccessEmail(requestId, user.Email, user.Name)
 		}
 	} else {
-		logger.Error("[{}] error fetching user by identifier: {}", requestId, identifier)
+		logger.Error("[{}] error fetching user by oAuthId: {}", requestId, profileInfo.OAuthId)
 		return nil, err
 	}
 
@@ -115,12 +130,15 @@ func ProcessCallbackRequest(requestId string, oAuthCallbackRequest model.OAuthCa
 		return nil, jwtError
 	}
 
-	authDao.UpdateTimestamp(requestId, identifier, authDao.TIMESTAMP_TYPE_LAST_LOGIN_TIME)
+	authDao.UpdateTimestamp(requestId, user.Id, authDao.TimestampTypeLastLoginTime)
 
 	return &model.OAuthCallbackResponse{
 		AuthToken: jwtToken,
 		UserId:    user.Id,
+		Name:      user.Name,
+		Email:     user.Email,
 		Success:   true,
+		IsNewUser: newUser,
 	}, nil
 }
 
@@ -136,8 +154,7 @@ func registerUser(requestId string, profileInfo ProfileInfo) (*model.User, *mode
 	return &model.User{
 		Id:                  registeredUser.Id,
 		Name:                registeredUser.Name,
-		Email:               registeredUser.Email,
-		Password:            registeredUser.Password,
+		Email:               utils.GetStringOrNil(registeredUser.Email),
 		Scopes:              registeredUser.Scopes,
 		ForgotPasswordToken: utils.GetStringOrNil(registeredUser.ForgotPasswordToken),
 		LastLoginAt:         utils.GetInt64OrNil(registeredUser.LastLoginAt),
@@ -146,33 +163,28 @@ func registerUser(requestId string, profileInfo ProfileInfo) (*model.User, *mode
 	}, nil
 }
 
-func createUserEntity(profileInfo ProfileInfo) *entity.User {
-	var loginType entity.LoginType
-	var email string
+func createUserEntity(profileInfo ProfileInfo) *entity2.User {
+	var entityLoginType enums.UserEntityLoginType
+	var email *string
 
 	if profileInfo.Email != "" {
-		loginType = entity.OAUTH_OTP
-		email = profileInfo.Email
+		entityLoginType = enums.UserEntityLoginTypeOauthAndOtp
+		email = &profileInfo.Email
 	} else {
-		loginType = entity.OAUTH_ONLY
-		email = profileInfo.Username
+		entityLoginType = enums.UserEntityLoginTypeOauthOnly
+		email = nil
 	}
 
-	return &entity.User{
+	return &entity2.User{
 		Id:                strings.ReplaceAll(uuid.New().String(), "-", ""),
+		OAuthId:           &profileInfo.OAuthId,
 		Email:             email,
 		ProfilePictureURL: &profileInfo.ProfilePicture,
 		Name:              profileInfo.Name,
-		UserLoginType:     loginType,
+		UserLoginType:     entityLoginType,
 		Scopes:            "user",
+		OAuthProvider:     &profileInfo.OAuthProvider,
 	}
-}
-
-func getIdentifier(profileInfo ProfileInfo) string {
-	if profileInfo.Email != "" {
-		return profileInfo.Email
-	}
-	return profileInfo.Id
 }
 
 func getProfileInfo(reqId string, request model.OAuthCallbackRequest) (*ProfileInfo, *model.ErrorResponse) {
@@ -181,23 +193,21 @@ func getProfileInfo(reqId string, request model.OAuthCallbackRequest) (*ProfileI
 	var profileInfo ProfileInfo
 
 	switch oAuthProvider {
-	case model.OAuthProvider(model.OAUTH_PROVIDER_GITHUB):
+	case enums.OauthProviderGithub:
 		pInfo, err := FetchGitHubProfileInfo(reqId, request)
-
 		if err != nil {
 			return nil, err
 		}
-
 		profileInfo = *pInfo
+		profileInfo.OAuthProvider = string(enums.OauthProviderGithub)
 
-	case model.OAuthProvider(model.OAUTH_PROVIDER_GOOGLE):
+	case enums.OauthProviderGoogle:
 		pInfo, err := FetchGoogleProfileInfo(reqId, request)
-
 		if err != nil {
 			return nil, err
 		}
-
 		profileInfo = *pInfo
+		profileInfo.OAuthProvider = string(enums.OauthProviderGoogle)
 	}
 
 	logger.Debug("[{}] profile info fetched is: {}", reqId, profileInfo)

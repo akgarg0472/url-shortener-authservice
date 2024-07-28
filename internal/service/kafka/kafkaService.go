@@ -3,10 +3,10 @@ package kafka_service
 import (
 	"context"
 
-	model "github.com/akgarg0472/urlshortener-auth-service/model"
+	"github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
-	kafka "github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go"
 )
 
 var (
@@ -48,7 +48,7 @@ func InitKafka() {
 
 	kafkaWriter = getKafkaWriter(kafkaURL, kafkaTopic)
 
-	logger.Info("Kafka initialzed: clusterIP={}, topic={}", kafkaWriter.Addr, kafkaWriter.Topic)
+	logger.Info("Kafka initialized: clusterIP={}, topic={}", kafkaWriter.Addr, kafkaWriter.Topic)
 }
 
 func CloseKafka() error {

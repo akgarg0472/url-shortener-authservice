@@ -2,9 +2,9 @@ package database
 
 import (
 	"fmt"
+	entity2 "github.com/akgarg0472/urlshortener-auth-service/internal/entity"
 	"sync"
 
-	entity "github.com/akgarg0472/urlshortener-auth-service/internal/dao/entity"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	Utils "github.com/akgarg0472/urlshortener-auth-service/utils"
 	"gorm.io/driver/mysql"
@@ -35,8 +35,8 @@ func InitDB() {
 }
 
 func initSchemas() {
-	user := entity.User{}
-	oAuthClient := entity.OAuthClient{}
+	user := entity2.User{}
+	oAuthClient := entity2.OAuthProvider{}
 
 	err := instance.AutoMigrate(&user)
 
@@ -75,7 +75,7 @@ func CloseDB() error {
 		db, err := instance.DB()
 
 		if err != nil || db.Close() != nil {
-			logger.Error("Error closing DB: {}", err.Error())
+			logger.Error("Error closing DB: {}", err)
 			return err
 		}
 

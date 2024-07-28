@@ -9,29 +9,38 @@ import (
 )
 
 var (
-	hrhvLogger = Logger.GetLogger("httpRequestHeaderValidator.go")
+	httpRequestHeaderValidatorLogger = Logger.GetLogger("httpRequestHeaderValidator.go")
 )
 
 func ValidateRequestJSONContentType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 		requestId := httpRequest.Header.Get("Request-ID")
-		contentType := httpRequest.Header.Get("Content-Type")
+		contentTypeHeader := "Content-Type"
+		applicationJsonContentTypeHeader := "application/json"
+
+		contentType := httpRequest.Header.Get(contentTypeHeader)
 
 		if contentType == "" {
-			hrhvLogger.Error("[{}]: Content-Type is missing", requestId)
+			httpRequestHeaderValidatorLogger.Error("[{}]: Content-Type is missing", requestId)
 			errorResponseJson := utils.GetErrorResponseByte("Content-Type is missing", 400)
-			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.Header().Set(contentTypeHeader, applicationJsonContentTypeHeader)
 			responseWriter.WriteHeader(http.StatusBadRequest)
-			responseWriter.Write(errorResponseJson)
+			_, err := responseWriter.Write(errorResponseJson)
+			if err != nil {
+				return
+			}
 			return
 		}
 
-		if contentType != "application/json" {
-			hrhvLogger.Error("[{}]: Content-Type '%s' not supported", requestId, contentType)
+		if contentType != applicationJsonContentTypeHeader {
+			httpRequestHeaderValidatorLogger.Error("[{}]: Content-Type '%s' not supported", requestId, contentType)
 			errorResponseJson := utils.GetErrorResponseByte(fmt.Sprintf("Content-Type '%s' not supported", contentType), 400)
-			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.Header().Set(contentTypeHeader, applicationJsonContentTypeHeader)
 			responseWriter.WriteHeader(http.StatusBadRequest)
-			responseWriter.Write(errorResponseJson)
+			_, err := responseWriter.Write(errorResponseJson)
+			if err != nil {
+				return
+			}
 			return
 		}
 

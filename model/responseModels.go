@@ -43,26 +43,30 @@ type ResetPasswordResponse struct {
 	StatusCode int    `json:"status_code"`
 }
 
-type OAuthClient struct {
+type OAuthProvider struct {
 	Provider    string `json:"provider"`
 	ClientId    string `json:"client_id"`
+	BaseUrl     string `json:"base_url"`
 	RedirectURI string `json:"redirect_uri"`
 	AccessType  string `json:"access_type"`
 	Scope       string `json:"scope"`
 }
 
-type OAuthClientResponse struct {
-	Clients    []OAuthClient `json:"clients"`
-	Success    bool          `json:"success"`
-	StatusCode int           `json:"status_code"`
+type OAuthProviderResponse struct {
+	Clients    []OAuthProvider `json:"clients"`
+	Success    bool            `json:"success"`
+	StatusCode int             `json:"status_code"`
 }
 
 type OAuthCallbackResponse struct {
 	Success   bool   `json:"success"`
 	UserId    string `json:"user_id"`
 	AuthToken string `json:"auth_token"`
+	Email     string `json:"email"`
+	Name      string `json:"name"`
+	IsNewUser bool   `json:"is_new_user"`
 }
 
-func (c OAuthClient) String() string {
-	return fmt.Sprintf("OAuthClient{Provider: %s, ClientId: %s, RedirectURI: %s, AccessType: %s, Scope: %s}", c.Provider, c.ClientId, c.RedirectURI, c.AccessType, c.Scope)
+func (c OAuthProvider) String() string {
+	return fmt.Sprintf("OAuthProvider{Provider: %s, ClientId: %s, RedirectURI: %s, AccessType: %s, Scope: %s}", c.Provider, c.ClientId, c.RedirectURI, c.AccessType, c.Scope)
 }

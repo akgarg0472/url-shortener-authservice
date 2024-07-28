@@ -2,11 +2,12 @@ package logger
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strings"
 )
 
-func ReadConfig(path string) LoggerConfig {
+func ReadConfig(path string) Config {
 	if path == "" {
 		path = "logger.conf"
 	}
@@ -17,11 +18,16 @@ func ReadConfig(path string) LoggerConfig {
 		panic("Error reading logger config file")
 	}
 
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			panic(fmt.Sprintf("error closing log file: %s", err.Error()))
+		}
+	}(file)
 
 	scanner := bufio.NewScanner(file)
 
-	config := LoggerConfig{}
+	config := Config{}
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -61,7 +67,7 @@ func ReadConfig(path string) LoggerConfig {
 	return config
 }
 
-func setLogLevel(config *LoggerConfig) {
+func setLogLevel(config *Config) {
 	switch config.Level {
 	case "fatal":
 	case "FATAL":
@@ -95,7 +101,7 @@ func setLogLevel(config *LoggerConfig) {
 	}
 }
 
-func handleType(value string, config *LoggerConfig) {
+func handleType(value string, config *Config) {
 	switch value {
 	case "console":
 		config.LogToConsole = true

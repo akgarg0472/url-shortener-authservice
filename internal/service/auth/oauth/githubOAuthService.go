@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -17,8 +18,8 @@ var (
 )
 
 const (
-	GITHUB_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
-	GITHUB_USER_INFO_URL    = "https://api.github.com/user"
+	GithubAccessTokenUrl = "https://github.com/login/oauth/access_token"
+	GithubUserInfoUrl    = "https://api.github.com/user"
 )
 
 type GitHubAccessTokenResponse struct {
@@ -28,7 +29,6 @@ type GitHubAccessTokenResponse struct {
 
 type GitHubUserInfoResponse struct {
 	Id             int64  `json:"id"`
-	Username       string `json:"login"`
 	Name           string `json:"name"`
 	ProfilePicture string `json:"avatar_url"`
 	Email          string `json:"email"`
@@ -55,7 +55,7 @@ func FetchGitHubProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 
 	client := &http.Client{}
 
-	req, _ := http.NewRequest("POST", GITHUB_ACCESS_TOKEN_URL, bytes.NewBuffer(requestBody))
+	req, _ := http.NewRequest("POST", GithubAccessTokenUrl, bytes.NewBuffer(requestBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
@@ -66,7 +66,12 @@ func FetchGitHubProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			// do nothing
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		gHOALogger.Error("[{}] invalid status code received from access token request: {}", reqId, resp.StatusCode)
@@ -82,7 +87,7 @@ func FetchGitHubProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	req, err = http.NewRequest("GET", GITHUB_USER_INFO_URL, nil)
+	req, err = http.NewRequest("GET", GithubUserInfoUrl, nil)
 
 	if err != nil {
 		gHOALogger.Error("[{}] failed to create user info request: {}", reqId, err)
@@ -98,7 +103,12 @@ func FetchGitHubProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			// do nothing
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		gHOALogger.Error("[{}] invalid status code received from user info request: {}", reqId, resp.StatusCode)
@@ -112,10 +122,9 @@ func FetchGitHubProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 	}
 
 	return &ProfileInfo{
-		Id:             strconv.FormatInt(userInfoResponse.Id, 10),
+		OAuthId:        strconv.FormatInt(userInfoResponse.Id, 10),
 		Name:           userInfoResponse.Name,
 		ProfilePicture: userInfoResponse.ProfilePicture,
 		Email:          userInfoResponse.Email,
-		Username:       userInfoResponse.Username,
 	}, nil
 }

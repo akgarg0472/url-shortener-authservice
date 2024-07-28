@@ -1,6 +1,9 @@
 package model
 
-import "fmt"
+import (
+	"fmt"
+	enums "github.com/akgarg0472/urlshortener-auth-service/constants"
+)
 
 type LoginRequest struct {
 	Email    string `json:"email" validate:"required,email"`
@@ -35,18 +38,11 @@ type ResetPasswordRequest struct {
 	ConfirmPassword    string `json:"confirm_password" validate:"required"`
 }
 
-type OAuthProvider string
-
-const (
-	OAUTH_PROVIDER_GOOGLE string = "google"
-	OAUTH_PROVIDER_GITHUB string = "github"
-)
-
 type OAuthCallbackRequest struct {
-	State    string        `json:"state"`
-	Code     string        `json:"auth_code"`
-	Scope    string        `json:"scope"`
-	Provider OAuthProvider `json:"provider"`
+	State    string              `json:"state"`
+	Code     string              `json:"auth_code"`
+	Scope    string              `json:"scope"`
+	Provider enums.OAuthProvider `json:"provider"`
 }
 
 func (request LoginRequest) String() string {
@@ -54,7 +50,7 @@ func (request LoginRequest) String() string {
 }
 
 func (request SignupRequest) String() string {
-	return fmt.Sprintf("Email: %s, UserId: %s", request.Email, request.Name)
+	return fmt.Sprintf("SignupRequest {Email: %s, Name: %s}", request.Email, request.Name)
 }
 
 func (r OAuthCallbackRequest) String() string {

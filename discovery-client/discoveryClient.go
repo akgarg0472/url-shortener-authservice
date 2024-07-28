@@ -1,6 +1,7 @@
 package consul
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -8,7 +9,7 @@ import (
 
 	"github.com/ArthurHlt/go-eureka-client/eureka"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
-	utils "github.com/akgarg0472/urlshortener-auth-service/utils"
+	"github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
 var (
@@ -18,7 +19,7 @@ var (
 )
 
 func InitDiscoveryClient(port int) {
-	isDiscoveryClientEnabled, err := strconv.ParseBool(utils.GetEnvVariable("ENABLE_DISCOVERY_CLIENT", ""))
+	isDiscoveryClientEnabled, err := strconv.ParseBool(utils.GetEnvVariable("ENABLE_DISCOVERY_CLIENT", "false"))
 
 	if err != nil || !isDiscoveryClientEnabled {
 		logger.Info("Discovery client is disabled in configuration")
@@ -40,7 +41,6 @@ func InitDiscoveryClient(port int) {
 	instanceInfo.SecureVipAddress = appAddress
 
 	registerInstance()
-
 	initHeartbeat()
 }
 
@@ -65,7 +65,7 @@ func UnregisterInstance() error {
 
 func initHeartbeat() {
 	go func() {
-		duration, err := strconv.ParseInt(utils.GetEnvVariable("DISCOVERY_CLIENT_HEARTBEAT_FREQEUENCY_DURATION", "30"), 10, 64)
+		duration, err := strconv.ParseInt(utils.GetEnvVariable("DISCOVERY_CLIENT_HEARTBEAT_FREQUENCY_DURATION", "30"), 10, 64)
 
 		if err != nil || duration < 30 {
 			duration = 30
@@ -76,37 +76,41 @@ func initHeartbeat() {
 		time.Sleep(heartbeatFrequency)
 
 		for {
-			logger.Trace("sending heartbeat -> {}, {}", instanceInfo.App, instanceInfo.InstanceID)
-			err := discoveryClient.SendHeartbeat(instanceInfo.App, instanceInfo.InstanceID)
-
-			if err != nil {
-				err, isEurekeError := err.(*eureka.EurekaError)
-
-				if isEurekeError {
-					if isInstanceNotFoundError(err) {
-						registerInstance()
-					}
-				}
-			}
-
+			sendHeartbeat()
 			time.Sleep(heartbeatFrequency)
 		}
 	}()
 }
 
-func registerInstance() error {
+func sendHeartbeat() {
+	logger.Debug("sending heartbeat -> {}, {}", instanceInfo.App, instanceInfo.InstanceID)
+	err := discoveryClient.SendHeartbeat(instanceInfo.App, instanceInfo.InstanceID)
+
+	if err != nil {
+		var err *eureka.EurekaError
+		isEurekaError := errors.As(err, &err)
+
+		if isEurekaError {
+			if isInstanceNotFoundError(err) {
+				registerInstance()
+			}
+		}
+	} else {
+		logger.Trace("heartbeat sent successfully -> {}, {}", instanceInfo.App, instanceInfo.InstanceID)
+	}
+}
+
+func registerInstance() {
 	logger.Info("registering instance -> {}:{}", instanceInfo.App, instanceInfo.InstanceID)
 
 	err := discoveryClient.RegisterInstance(instanceInfo.App, instanceInfo)
 
 	if err != nil {
 		logger.Error("error registering instance: {}", err.Error())
-		return err
+		return
 	}
 
 	logger.Debug("instance registered -> {}:{}", instanceInfo.App, instanceInfo.InstanceID)
-
-	return nil
 }
 
 func isInstanceNotFoundError(err *eureka.EurekaError) bool {

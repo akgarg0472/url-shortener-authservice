@@ -54,7 +54,7 @@ func (tokenService *TokenService) GenerateJwtToken(requestId string, user Model.
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	jwtTokenString, err := token.SignedString([]byte(tokenService.jwtSecretKey))
+	jwtTokenString, err := token.SignedString(tokenService.jwtSecretKey)
 
 	if err != nil {
 		logger.Error("[{}]: Error while generating JWT token -> {}", requestId, err.Error())
@@ -65,8 +65,12 @@ func (tokenService *TokenService) GenerateJwtToken(requestId string, user Model.
 }
 
 // ValidateJwtToken validates the JWT token by checking if it is valid and not expired
-func (tokenService *TokenService) ValidateJwtToken(requestId string, jwtToken string, userId string) (*Model.ValidateTokenResponse, *Model.ErrorResponse) {
-	logger.Debug("[{}]: Validating JWT token -> {}, {}", requestId, userId, jwtToken)
+func (tokenService *TokenService) ValidateJwtToken(
+	requestId string,
+	jwtToken string,
+	userId string,
+) (*Model.ValidateTokenResponse, *Model.ErrorResponse) {
+	logger.Debug("[{}]: Validating JWT token -> userId: {}, jwtToken: {}", requestId, userId, jwtToken)
 
 	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -116,7 +120,7 @@ func (tokenService *TokenService) GenerateForgotPasswordToken(requestId string, 
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	forgotPasswordToken, err := token.SignedString([]byte(tokenService.forgotPasswordSecretKey))
+	forgotPasswordToken, err := token.SignedString(tokenService.forgotPasswordSecretKey)
 
 	if err != nil {
 		logger.Error("[{}]: Error while generating forgot password token -> {}", requestId, err.Error())

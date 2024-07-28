@@ -18,5 +18,10 @@ func AddRequestIdHeader(next http.Handler) http.Handler {
 }
 
 func generateRequestID() string {
-	return strings.ReplaceAll(uuid.New().String(), "-", "")
+	u := uuid.New().String()
+	u = strings.ReplaceAll(u, "-", "")
+	if len(u) > 16 {
+		u = u[:16]
+	}
+	return u
 }

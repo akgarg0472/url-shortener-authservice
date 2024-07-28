@@ -2,30 +2,29 @@ package auth_service
 
 import (
 	"fmt"
+	enums "github.com/akgarg0472/urlshortener-auth-service/constants"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 
 	authDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao/auth"
-	"github.com/akgarg0472/urlshortener-auth-service/internal/dao/entity"
 	notificationService "github.com/akgarg0472/urlshortener-auth-service/internal/service/notification"
 	tokenService "github.com/akgarg0472/urlshortener-auth-service/internal/service/token"
 	authModels "github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
-	utils "github.com/akgarg0472/urlshortener-auth-service/utils"
+	"github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
 var (
 	logger = Logger.GetLogger("authService.go")
 )
 
-// Function to handle login request and generate jwt token
-func Login(requestId string, loginRequest authModels.LoginRequest) (*authModels.LoginResponse, *authModels.ErrorResponse) {
-	logger.Info("[{}]: Processing Login Request -> {}", requestId, loginRequest)
+// LoginWithEmailPassword Function to handle login request using email & password and generate JWT token
+func LoginWithEmailPassword(requestId string, loginRequest authModels.LoginRequest) (*authModels.LoginResponse, *authModels.ErrorResponse) {
+	logger.Info("[{}]: processing LoginWithEmailPassword Request -> {}", requestId, loginRequest)
 
-	user, err := authDao.GetUserByEmailOrId(requestId, loginRequest.Email)
+	user, err := authDao.GetUserByEmail(requestId, loginRequest.Email)
 
 	if err != nil {
 		logger.Error("[{}]: Error {} getting user by email -> {}", requestId, err.ErrorCode, err.Message)
@@ -42,6 +41,14 @@ func Login(requestId string, loginRequest authModels.LoginRequest) (*authModels.
 
 	logger.Trace("[{}]: User -> {}", requestId, user)
 
+	if user.LoginType != enums.UserEntityLoginTypeEmailAndPassword {
+		logger.Info("[{}] user is not registered using email and password", requestId)
+		return nil, &authModels.ErrorResponse{
+			Message:   fmt.Sprintf("Your account is registered using %s OAuth and does not have a password. Please log in using %s OAuth.", user.OAuthProvider, user.OAuthProvider),
+			ErrorCode: 400,
+		}
+	}
+
 	if !verifyPassword(loginRequest.Password, user.Password) {
 		logger.Error("[{}] invalid credentials provided", requestId)
 		return nil, &authModels.ErrorResponse{Message: "Invalid credentials", ErrorCode: 401}
@@ -54,7 +61,7 @@ func Login(requestId string, loginRequest authModels.LoginRequest) (*authModels.
 		return nil, jwtError
 	}
 
-	authDao.UpdateTimestamp(requestId, loginRequest.Email, authDao.TIMESTAMP_TYPE_LAST_LOGIN_TIME)
+	authDao.UpdateTimestamp(requestId, loginRequest.Email, authDao.TimestampTypeLastLoginTime)
 
 	return &authModels.LoginResponse{
 		AccessToken: jwtToken,
@@ -64,9 +71,9 @@ func Login(requestId string, loginRequest authModels.LoginRequest) (*authModels.
 	}, nil
 }
 
-// Function to handle signup request and save user in database
+// Signup Function to handle signup request and save user in database
 func Signup(requestId string, signupRequest authModels.SignupRequest) (*authModels.SignupResponse, *authModels.ErrorResponse) {
-	logger.Info("[{}]: Processing Signup Request -> {}", requestId, signupRequest)
+	logger.Info("[{}]: Processing Signup Request: {}", requestId, signupRequest)
 
 	userExists, userExistsError := authDao.CheckIfUserExistsByEmail(requestId, signupRequest.Email)
 
@@ -75,11 +82,11 @@ func Signup(requestId string, signupRequest authModels.SignupRequest) (*authMode
 		return nil, userExistsError
 	}
 
-	logger.Info("[{}]: User exists -> {}", requestId, strconv.FormatBool(userExists))
+	logger.Info("[{}]: User exists with email '{}'-> {}", requestId, signupRequest.Email, userExists)
 
 	if userExists {
-		logger.Error("[{}]: Email already exists -> {}", requestId, signupRequest.Email)
-		return nil, utils.GetErrorResponse(fmt.Sprintf("User already exists with email: %s", signupRequest.Email), 409)
+		logger.Error("[{}]: Email already registered: {}", requestId, signupRequest.Email)
+		return nil, utils.GetErrorResponse("Email already registered", 409)
 	}
 
 	hashedPassword, bcryptError := bcrypt.GenerateFromPassword([]byte(signupRequest.Password), 14)
@@ -91,7 +98,7 @@ func Signup(requestId string, signupRequest authModels.SignupRequest) (*authMode
 
 	signupRequest.Password = string(hashedPassword)
 	dbUser := createUserEntity(signupRequest)
-	dbUser.UserLoginType = entity.EMAIL_PASSWORD
+	dbUser.UserLoginType = enums.UserEntityLoginTypeEmailAndPassword
 	user, saveError := authDao.SaveUser(requestId, dbUser)
 
 	if saveError != nil {
@@ -104,7 +111,9 @@ func Signup(requestId string, signupRequest authModels.SignupRequest) (*authMode
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	notificationService.SendSignupSuccessEmail(requestId, user.Email, user.Name)
+	if user.Email != nil {
+		notificationService.SendSignupSuccessEmail(requestId, *user.Email, user.Name)
+	}
 
 	return &authModels.SignupResponse{
 		Message:    "Signup successful! You can now explore all of the exciting and amazing features",
@@ -112,18 +121,16 @@ func Signup(requestId string, signupRequest authModels.SignupRequest) (*authMode
 	}, nil
 }
 
-// Function to handle logout request and invalidates the jwt token
+// Logout Function to handle logout request and invalidates the jwt token
 func Logout(requestId string, logoutRequest authModels.LogoutRequest) (*authModels.LogoutResponse, *authModels.ErrorResponse) {
 	logger.Info("[{}]: Processing Logout Request -> {}", requestId, logoutRequest)
-
-	// todo: implement logic if required
 
 	return &authModels.LogoutResponse{
 		Message: "Logout successful",
 	}, nil
 }
 
-// Function to handle validate token request and validates the jwt token
+// ValidateToken Function to handle validate token request and validates the jwt token
 func ValidateToken(requestId string, validateTokenRequest authModels.ValidateTokenRequest) (*authModels.ValidateTokenResponse, *authModels.ErrorResponse) {
 	logger.Debug("[{}]: Processing Validate Token Request -> {}", requestId, validateTokenRequest)
 
@@ -140,13 +147,13 @@ func ValidateToken(requestId string, validateTokenRequest authModels.ValidateTok
 	return tokenValidateResp, nil
 }
 
-// Function to generate forgot password token and send forgot password email back to user
+// GenerateAndSendForgotPasswordToken Function to generate forgot password token and send forgot password email back to user
 func GenerateAndSendForgotPasswordToken(requestId string, forgotPasswordRequest authModels.ForgotPasswordRequest) (*authModels.ForgotPasswordResponse, *authModels.ErrorResponse) {
 	logger.Debug("[{}]: Processing forgot password Request -> {}", requestId, forgotPasswordRequest)
 
 	email := forgotPasswordRequest.Email
 
-	user, err := authDao.GetUserByEmailOrId(requestId, email)
+	user, err := authDao.GetUserByEmail(requestId, email)
 
 	if err != nil {
 		if err.ErrorCode == 404 {
@@ -190,7 +197,7 @@ func GenerateAndSendForgotPasswordToken(requestId string, forgotPasswordRequest 
 	}, nil
 }
 
-// Function to validate forgot password token and return redirect URL to reset password UI page
+// VerifyResetPasswordToken Function to validate forgot password token and return redirect URL to reset password UI page
 func VerifyResetPasswordToken(requestId string, queryParams url.Values) (string, *authModels.ErrorResponse) {
 	emailParam := queryParams["email"]
 	tokenParam := queryParams["token"]
@@ -232,7 +239,7 @@ func VerifyResetPasswordToken(requestId string, queryParams url.Values) (string,
 	return redirectUrl, nil
 }
 
-// Function to actually reset password from forgot-password UI page
+// ResetPassword Function to actually reset password from forgot-password UI page
 func ResetPassword(requestId string, resetPasswordRequest authModels.ResetPasswordRequest) (*authModels.ResetPasswordResponse, *authModels.ErrorResponse) {
 	logger.Info("[{}]: Processing Reset password Request", requestId)
 

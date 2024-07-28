@@ -33,12 +33,18 @@ func sendResponseToClient(responseWriter http.ResponseWriter, requestId string, 
 
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(statusCode)
-	responseWriter.Write([]byte(jsonResponse))
+	_, err2 := responseWriter.Write([]byte(jsonResponse))
+	if err2 != nil {
+		return
+	}
 }
 
 // Function to send response to client with given status code and message
 func sendResponseToClientWithStatusAndMessage(responseWriter http.ResponseWriter, statusCode int, message string) {
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(statusCode)
-	responseWriter.Write([]byte(message))
+	_, err := responseWriter.Write([]byte(message))
+	if err != nil {
+		return
+	}
 }

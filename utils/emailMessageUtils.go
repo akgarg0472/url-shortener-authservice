@@ -1,6 +1,6 @@
 package utils
 
-func GetSignupSuccessEmailBody(email string, name string) string {
+func GetSignupSuccessEmailBody(name string) string {
 	logoUrl := GetEnvVariable("URL_SHORTENER_LOGO_URL", "https://i.ibb.co/1z4L2sB/url-shortener-logo.png")
 	dashboardLink := GetEnvVariable("FRONTEND_BASE_DOMAIN", "http://127.0.0.1:3000/") + GetEnvVariable("FRONTEND_DASHBOARD_PAGE_URL", "dashboard")
 
