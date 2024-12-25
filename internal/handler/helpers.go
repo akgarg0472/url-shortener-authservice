@@ -4,8 +4,7 @@ import (
 	"net/http"
 
 	AuthModels "github.com/akgarg0472/urlshortener-auth-service/model"
-	"github.com/akgarg0472/urlshortener-auth-service/utils"
-	Utils "github.com/akgarg0472/urlshortener-auth-service/utils"
+	utils "github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
 // Function to send response back to client
@@ -16,7 +15,7 @@ func sendResponseToClient(responseWriter http.ResponseWriter, requestId string, 
 		return
 	}
 
-	jsonResponse, jsonConvertError := Utils.ConvertToJsonString(response)
+	jsonResponse, jsonConvertError := utils.ConvertToJsonString(response)
 
 	if jsonConvertError != nil {
 		authLogger.Error("[{}]: Error Converting Response to JSON: {}", requestId, jsonConvertError.Error())

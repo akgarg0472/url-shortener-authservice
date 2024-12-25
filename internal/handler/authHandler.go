@@ -6,6 +6,7 @@ import (
 	authService "github.com/akgarg0472/urlshortener-auth-service/internal/service/auth"
 	authModels "github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
+	"github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
 var authLogger = Logger.GetLogger("authHandler.go")
@@ -16,7 +17,7 @@ func LoginHandler(responseWriter http.ResponseWriter, httpRequest *http.Request)
 	context := httpRequest.Context()
 
 	requestId := httpRequest.Header.Get(requestIdHeader)
-	loginRequest := context.Value("loginRequest").(authModels.LoginRequest)
+	loginRequest := context.Value(utils.RequestContextKeys.LoginRequestKey).(authModels.LoginRequest)
 
 	authLogger.Trace("[{}]: LoginWithEmailPassword request received on handler -> {}", requestId, loginRequest)
 
@@ -30,7 +31,7 @@ func SignupHandler(responseWriter http.ResponseWriter, httpRequest *http.Request
 	context := httpRequest.Context()
 
 	requestId := httpRequest.Header.Get(requestIdHeader)
-	signupRequest := context.Value("signupRequest").(authModels.SignupRequest)
+	signupRequest := context.Value(utils.RequestContextKeys.SignupRequestKey).(authModels.SignupRequest)
 
 	authLogger.Trace("[{}]: Signup request received on handler -> {}", requestId, signupRequest)
 
@@ -44,7 +45,7 @@ func LogoutHandler(responseWriter http.ResponseWriter, httpRequest *http.Request
 	context := httpRequest.Context()
 
 	requestId := httpRequest.Header.Get(requestIdHeader)
-	logoutRequest := context.Value("logoutRequest").(authModels.LogoutRequest)
+	logoutRequest := context.Value(utils.RequestContextKeys.LogoutRequestKey).(authModels.LogoutRequest)
 
 	authLogger.Trace("[{}]: Logout request received on handler -> {}", requestId, logoutRequest)
 
@@ -58,7 +59,7 @@ func VerifyTokenHandler(responseWriter http.ResponseWriter, httpRequest *http.Re
 	context := httpRequest.Context()
 
 	requestId := httpRequest.Header.Get(requestIdHeader)
-	validateTokenRequest := context.Value("validateTokenRequest").(authModels.ValidateTokenRequest)
+	validateTokenRequest := context.Value(utils.RequestContextKeys.ValidateTokenRequestKey).(authModels.ValidateTokenRequest)
 
 	authLogger.Trace("[{}]: Validate Token request received on handler -> {}", requestId, validateTokenRequest)
 
@@ -72,7 +73,7 @@ func ForgotPasswordHandler(responseWriter http.ResponseWriter, httpRequest *http
 	context := httpRequest.Context()
 
 	requestId := httpRequest.Header.Get(requestIdHeader)
-	forgotPasswordRequest := context.Value("forgotPasswordRequest").(authModels.ForgotPasswordRequest)
+	forgotPasswordRequest := context.Value(utils.RequestContextKeys.ForgotPasswordRequestKey).(authModels.ForgotPasswordRequest)
 
 	authLogger.Trace("[{}]: Logout request received on handler -> {}", requestId, forgotPasswordRequest)
 
@@ -104,7 +105,7 @@ func ResetPasswordHandler(responseWriter http.ResponseWriter, httpRequest *http.
 	context := httpRequest.Context()
 
 	requestId := httpRequest.Header.Get(requestIdHeader)
-	resetPasswordRequest := context.Value("resetPasswordRequest").(authModels.ResetPasswordRequest)
+	resetPasswordRequest := context.Value(utils.RequestContextKeys.ResetPasswordRequestKey).(authModels.ResetPasswordRequest)
 
 	authLogger.Trace("[{}]: Reset Password request received on handler -> {}", requestId, resetPasswordRequest)
 

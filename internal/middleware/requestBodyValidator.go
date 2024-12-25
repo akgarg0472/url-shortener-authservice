@@ -46,7 +46,7 @@ func LoginRequestBodyValidator(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(httpRequest.Context(), "loginRequest", loginRequest)
+		ctx := context.WithValue(httpRequest.Context(), utils.RequestContextKeys.LoginRequestKey, loginRequest)
 
 		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})
@@ -94,7 +94,7 @@ func SignupRequestBodyValidator(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(httpRequest.Context(), "signupRequest", signupRequest)
+		ctx := context.WithValue(httpRequest.Context(), utils.RequestContextKeys.SignupRequestKey, signupRequest)
 
 		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})
@@ -130,7 +130,7 @@ func LogoutRequestBodyValidator(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(httpRequest.Context(), "logoutRequest", logoutRequest)
+		ctx := context.WithValue(httpRequest.Context(), utils.RequestContextKeys.LogoutRequestKey, logoutRequest)
 
 		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})
@@ -166,7 +166,7 @@ func VerifyTokenRequestBodyValidator(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(httpRequest.Context(), "validateTokenRequest", validateTokenRequest)
+		ctx := context.WithValue(httpRequest.Context(), utils.RequestContextKeys.ValidateTokenRequestKey, validateTokenRequest)
 
 		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})
@@ -202,7 +202,7 @@ func ForgotPasswordRequestBodyValidator(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(httpRequest.Context(), "forgotPasswordRequest", forgotPasswordRequest)
+		ctx := context.WithValue(httpRequest.Context(), utils.RequestContextKeys.ForgotPasswordRequestKey, forgotPasswordRequest)
 
 		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})
@@ -250,7 +250,7 @@ func ResetPasswordRequestBodyValidator(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(httpRequest.Context(), "resetPasswordRequest", resetPasswordRequest)
+		ctx := context.WithValue(httpRequest.Context(), utils.RequestContextKeys.ResetPasswordRequestKey, resetPasswordRequest)
 
 		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})
@@ -298,7 +298,7 @@ func OAuthCallbackRequestBodyValidator(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(httpRequest.Context(), "oAuthCallbackRequest", oAuthCallbackRequest)
+		ctx := context.WithValue(httpRequest.Context(), utils.RequestContextKeys.OAuthCallbackRequestKey, oAuthCallbackRequest)
 
 		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})

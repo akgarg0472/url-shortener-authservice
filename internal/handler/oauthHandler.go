@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"net/http"
+
 	oauthservice "github.com/akgarg0472/urlshortener-auth-service/internal/service/auth/oauth"
 	"github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
-	"net/http"
+	"github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
 var oauthLogger = Logger.GetLogger("authHandler.go")
@@ -26,7 +28,7 @@ func OAuthCallbackHandler(responseWriter http.ResponseWriter, httpRequest *http.
 	context := httpRequest.Context()
 
 	requestId := httpRequest.Header.Get("Request-ID")
-	oAuthCallbackRequest := context.Value("oAuthCallbackRequest").(model.OAuthCallbackRequest)
+	oAuthCallbackRequest := context.Value(utils.RequestContextKeys.OAuthCallbackRequestKey).(model.OAuthCallbackRequest)
 
 	oauthLogger.Trace("[{}]: OAuth Callback request received on handler -> {}", requestId, oAuthCallbackRequest)
 
