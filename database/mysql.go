@@ -2,17 +2,19 @@ package database
 
 import (
 	"fmt"
-	entity2 "github.com/akgarg0472/urlshortener-auth-service/internal/entity"
 	"sync"
 
-	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
+	entity2 "github.com/akgarg0472/urlshortener-auth-service/internal/entity"
+
+	MyLogger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	Utils "github.com/akgarg0472/urlshortener-auth-service/utils"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	ormLogger "gorm.io/gorm/logger"
 )
 
 var (
-	logger   = Logger.GetLogger("mysql.go")
+	logger   = MyLogger.GetLogger("mysql.go")
 	instance *gorm.DB
 	once     sync.Once
 )
@@ -22,7 +24,9 @@ func InitDB() {
 		logger.Info("initializing MySQL database")
 
 		dsn := getDatasource()
-		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+			Logger: ormLogger.Default.LogMode(ormLogger.Silent),
+		})
 
 		if err != nil {
 			logger.Fatal("Error initializing MySQL database: {}", err.Error())

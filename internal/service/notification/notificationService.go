@@ -13,7 +13,7 @@ var (
 )
 
 func SendSignupSuccessEmail(requestId string, email string, name string) {
-	logger.Info("[{}] Sending signup success email to {}", requestId, email)
+	logger.Info("[{}] Pushing signup success email to {}", requestId, email)
 
 	body := utils.GetSignupSuccessEmailBody(name)
 	recipients := [1]string{email}
