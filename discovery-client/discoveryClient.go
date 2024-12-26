@@ -114,5 +114,5 @@ func registerInstance() {
 }
 
 func isInstanceNotFoundError(err *eureka.EurekaError) bool {
-	return err.ErrorCode == 502 && err.Message == "Instance resource not found"
+	return err != nil && err.ErrorCode == 502 && err.Message == "Instance resource not found"
 }

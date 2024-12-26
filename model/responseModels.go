@@ -65,6 +65,7 @@ type OAuthCallbackResponse struct {
 	Email     string `json:"email"`
 	Name      string `json:"name"`
 	IsNewUser bool   `json:"is_new_user"`
+	Message   string `json:message`
 }
 
 func (c OAuthProvider) String() string {

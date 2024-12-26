@@ -2,9 +2,10 @@ package oauth_service
 
 import (
 	"fmt"
+	"strings"
+
 	enums "github.com/akgarg0472/urlshortener-auth-service/constants"
 	entity2 "github.com/akgarg0472/urlshortener-auth-service/internal/entity"
-	"strings"
 
 	authDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao/auth"
 	oauthDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao/oauth"
@@ -98,7 +99,7 @@ func ProcessCallbackRequest(
 	}
 
 	// checks if user is registered or not
-	user, err := authDao.GetUserByOAuthId(requestId, profileInfo.OAuthId)
+	user, err := getExistingUser(requestId, *profileInfo)
 
 	if user != nil {
 		logger.Info("[{}] user is already registered", requestId)
@@ -118,8 +119,11 @@ func ProcessCallbackRequest(
 		if user.Email != "" {
 			notificationService.SendSignupSuccessEmail(requestId, user.Email, user.Name)
 		}
+	} else if err != nil && err.ErrorCode == 409 {
+		logger.Error("[{}] user already exists for oauthId/email: {}, {}", requestId, profileInfo.OAuthId, profileInfo.Email)
+		return nil, err
 	} else {
-		logger.Error("[{}] error fetching user by oAuthId: {}", requestId, profileInfo.OAuthId)
+		logger.Error("[{}] error fetching user: {}", requestId, profileInfo.OAuthId)
 		return nil, err
 	}
 
@@ -132,6 +136,13 @@ func ProcessCallbackRequest(
 
 	authDao.UpdateTimestamp(requestId, user.Id, authDao.TimestampTypeLastLoginTime)
 
+	message := ""
+	if newUser {
+		message = "Welcome onboard: " + profileInfo.Name
+	} else {
+		message = "Welcome back: " + profileInfo.Name
+	}
+
 	return &model.OAuthCallbackResponse{
 		AuthToken: jwtToken,
 		UserId:    user.Id,
@@ -139,6 +150,7 @@ func ProcessCallbackRequest(
 		Email:     user.Email,
 		Success:   true,
 		IsNewUser: newUser,
+		Message:   message,
 	}, nil
 }
 
@@ -213,4 +225,33 @@ func getProfileInfo(reqId string, request model.OAuthCallbackRequest) (*ProfileI
 	logger.Debug("[{}] profile info fetched is: {}", reqId, profileInfo)
 
 	return &profileInfo, nil
+}
+
+func getExistingUser(requestId string, profileInfo ProfileInfo) (*model.User, *model.ErrorResponse) {
+	user, err := authDao.GetUserByOAuthId(requestId, profileInfo.OAuthId)
+
+	if err != nil {
+		if err.ErrorCode == 404 {
+			userExistsByEmail, emailError := authDao.CheckIfUserExistsByEmail(requestId, profileInfo.Email)
+
+			if emailError != nil {
+				return nil, emailError
+			}
+
+			if userExistsByEmail {
+				return nil, &model.ErrorResponse{
+					Message:   "An account exists by same email: " + profileInfo.Email,
+					ErrorCode: 409,
+				}
+			}
+		}
+
+		return nil, err
+	}
+
+	if user != nil {
+		return user, nil
+	} else {
+		return nil, nil
+	}
 }
