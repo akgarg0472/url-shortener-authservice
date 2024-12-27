@@ -36,9 +36,9 @@ type GoogleUserInfoResponse struct {
 func FetchGoogleProfileInfo(reqId string, request model.OAuthCallbackRequest) (*ProfileInfo, *model.ErrorResponse) {
 	gOALogger.Info("[{}] fetching profile info from google", reqId)
 
-	clientId := utils.GetEnvVariable("OAUTH_CLIENT_GOOGLE_ID", "")
-	clientSecret := utils.GetEnvVariable("OAUTH_CLIENT_GOOGLE_SECRET", "")
-	redirectUri := utils.GetEnvVariable("OAUTH_CLIENT_GOOGLE_REDIRECT_URI", "")
+	clientId := utils.GetEnvVariable("OAUTH_GOOGLE_CLIENT_ID", "")
+	clientSecret := utils.GetEnvVariable("OAUTH_GOOGLE_CLIENT_SECRET", "")
+	redirectUri := utils.GetEnvVariable("OAUTH_GOOGLE_CLIENT_REDIRECT_URI", "")
 
 	requestBody, err := json.Marshal(map[string]string{
 		"code":          request.Code,
