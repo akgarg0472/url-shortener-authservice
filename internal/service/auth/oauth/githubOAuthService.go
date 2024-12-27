@@ -37,7 +37,7 @@ type GitHubUserInfoResponse struct {
 func FetchGitHubProfileInfo(reqId string, request model.OAuthCallbackRequest) (*ProfileInfo, *model.ErrorResponse) {
 	gHOALogger.Info("[{}] fetching profile info from GitHub", reqId)
 
-	clientId := utils.GetEnvVariable("OAUTH_GITHUB_CLIENT_ID	", "")
+	clientId := utils.GetEnvVariable("OAUTH_GITHUB_CLIENT_ID", "")
 	clientSecret := utils.GetEnvVariable("OAUTH_GITHUB_CLIENT_SECRET", "")
 	redirectUri := utils.GetEnvVariable("OAUTH_GITHUB_CLIENT_REDIRECT_URI", "")
 

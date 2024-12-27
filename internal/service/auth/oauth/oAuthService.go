@@ -232,6 +232,12 @@ func getExistingUser(requestId string, profileInfo ProfileInfo) (*model.User, *m
 
 	if err != nil {
 		if err.ErrorCode == 404 {
+			if profileInfo.Email == "" {
+				return nil, &model.ErrorResponse{
+					ErrorCode: 404,
+				}
+			}
+
 			userExistsByEmail, emailError := authDao.CheckIfUserExistsByEmail(requestId, profileInfo.Email)
 
 			if emailError != nil {
