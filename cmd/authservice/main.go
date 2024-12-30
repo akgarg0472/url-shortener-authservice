@@ -68,7 +68,9 @@ func main() {
 
 	// Start the graceful server shutdown
 	logger.Info("Shutting down server gracefully...")
+
 	err := server.Shutdown(ctx)
+
 	if err != nil {
 		logger.Error("Error during server shutdown: {}", err)
 	}
@@ -78,7 +80,7 @@ func loadDotEnv() {
 	err := godotenv.Load()
 
 	if err != nil {
-		panic(err)
+		logger.Info("Error loading .env file: %v", err)
 	}
 }
 
@@ -87,6 +89,7 @@ func loadRouters() *chi.Mux {
 
 	router.Mount("/auth/v1", Routers.AuthRouterV1())
 	router.Mount("/auth/v1/oauth", Routers.OAuthRouterV1())
+	router.Mount("/", Routers.PingRouterV1())
 
 	return router
 }

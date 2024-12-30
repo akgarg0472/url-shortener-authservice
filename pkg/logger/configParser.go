@@ -1,73 +1,28 @@
 package logger
 
 import (
-	"bufio"
-	"fmt"
-	"os"
 	"strings"
+
+	"github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
 func ReadConfig(path string) Config {
-	if path == "" {
-		path = "logger.conf"
-	}
-
-	file, err := os.Open(path)
-
-	if err != nil {
-		panic("Error reading logger config file")
-	}
-
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			panic(fmt.Sprintf("error closing log file: %s", err.Error()))
-		}
-	}(file)
-
-	scanner := bufio.NewScanner(file)
-
 	config := Config{}
 
-	for scanner.Scan() {
-		line := scanner.Text()
+	config.Level = utils.GetEnvVariable("LOGGER_LEVEL", "INFO")
+	processLogLevel(&config)
 
-		if line == "" || line[0] == '#' {
-			continue
-		}
+	loggerType := utils.GetEnvVariable("LOGGER_TYPE", "console")
+	processLoggerType(strings.TrimSpace(loggerType), &config)
 
-		keyValuePair := strings.Split(line, "=")
+	config.Enabled = utils.GetEnvVariable("LOGGER_ENABLED", "true") == "true"
 
-		if len(keyValuePair) != 2 {
-			panic("Invalid logger config property %s" + line)
-		}
-
-		key := strings.TrimSpace(keyValuePair[0])
-		value := strings.TrimSpace(keyValuePair[1])
-
-		switch key {
-		case "logger.level":
-			config.Level = value
-			setLogLevel(&config)
-
-		case "logger.type":
-			loggerTypes := strings.Split(value, ",")
-			for _, loggerType := range loggerTypes {
-				handleType(strings.TrimSpace(loggerType), &config)
-			}
-
-		case "logger.enabled":
-			config.Enabled = value == "true"
-
-		case "logger.filepath":
-			config.LogFilePath = value
-		}
-	}
+	config.LogFilePath = utils.GetEnvVariable("LOGGER_LOG_FILE_PATH", "/tmp/logs.log")
 
 	return config
 }
 
-func setLogLevel(config *Config) {
+func processLogLevel(config *Config) {
 	switch config.Level {
 	case "fatal":
 	case "FATAL":
@@ -101,7 +56,7 @@ func setLogLevel(config *Config) {
 	}
 }
 
-func handleType(value string, config *Config) {
+func processLoggerType(value string, config *Config) {
 	switch value {
 	case "console":
 		config.LogToConsole = true

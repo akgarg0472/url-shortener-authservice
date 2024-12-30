@@ -30,12 +30,12 @@ func InitDiscoveryClient(port int) {
 
 	discoveryClient = eureka.NewClient(discClientMachinesIP)
 
-	host := "localhost"
+	host := utils.GetHostIP()
 	appId := "urlshortener-auth-service"
 	instanceId := fmt.Sprintf("%s:urlshortener-auth-service:%d", host, port)
 	appAddress := "urlshortener-auth-service"
 
-	instanceInfo = eureka.NewInstanceInfo(host, appId, "127.0.0.1", port, 60, false)
+	instanceInfo = eureka.NewInstanceInfo(host, appId, host, port, 60, false)
 	instanceInfo.InstanceID = instanceId
 	instanceInfo.VipAddress = appAddress
 	instanceInfo.SecureVipAddress = appAddress
