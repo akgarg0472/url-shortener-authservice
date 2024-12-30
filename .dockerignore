@@ -1,0 +1,16 @@
+authservice
+
+.git
+.gitignore
+
+.env
+.env.sample
+
+node_modules/
+
+.vscode/
+.idea/
+
+*.log
+
+README.md
