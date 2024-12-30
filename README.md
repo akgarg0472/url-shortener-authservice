@@ -177,7 +177,7 @@ The `Dockerfile` defines the build and runtime configuration for the container.
 To build the Docker image, run the following command:
 
 ```bash
-docker build -t akgarg0472/urlshortener-auth-service:tag .
+docker build -t akgarg0472/urlshortener-auth-service:1.0.0 .
 ```
 
 ### Run the Docker Container
@@ -185,5 +185,5 @@ docker build -t akgarg0472/urlshortener-auth-service:tag .
 You can run the application with custom environment variables using the docker run command. For example:
 
 ```bash
-docker run --network=host --env-file .env akgarg0472/urlshortener-auth-service:tag
+docker run --network=host --env-file .env akgarg0472/urlshortener-auth-service:1.0.0
 ```
