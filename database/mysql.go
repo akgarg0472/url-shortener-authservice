@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	entity2 "github.com/akgarg0472/urlshortener-auth-service/internal/entity"
 
@@ -23,18 +24,37 @@ func InitDB() {
 	once.Do(func() {
 		logger.Info("initializing MySQL database")
 
-		dsn := getDatasource()
-		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-			Logger: ormLogger.Default.LogMode(ormLogger.Silent),
-		})
+		maxRetryDuration := Utils.GetEnvDurationSeconds("DB_MAX_RETRY_DURATION_SECONDS", 1*time.Minute)
+		retryDelay := Utils.GetEnvDurationSeconds("DB_RETRY_DELAY_SECONDS", 5*time.Second)
+		var startTime = time.Now()
 
-		if err != nil {
-			logger.Fatal("Error initializing MySQL database: {}", err.Error())
-			panic("Error Initializing MySQL Database: " + err.Error())
+		var db *gorm.DB
+		var err error
+
+		for {
+			elapsed := time.Since(startTime)
+
+			if elapsed > maxRetryDuration {
+				logger.Fatal("Failed to initialize MySQL database after 1 minute: %s", err.Error())
+				panic("Error Initializing MySQL Database: " + err.Error())
+			}
+
+			dsn := getDatasource()
+
+			db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+				Logger: ormLogger.Default.LogMode(ormLogger.Silent),
+			})
+
+			if err != nil {
+				logger.Error("Error initializing MySQL database (elapsed time: %s): %s", elapsed, err.Error())
+				time.Sleep(retryDelay)
+			} else {
+				logger.Info("MySQL database initialized successfully")
+				instance = db
+				initSchemas()
+				return
+			}
 		}
-
-		instance = db
-		initSchemas()
 	})
 }
 

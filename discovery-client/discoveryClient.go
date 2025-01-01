@@ -101,16 +101,33 @@ func sendHeartbeat() {
 }
 
 func registerInstance() {
-	logger.Info("registering instance -> {}:{}", instanceInfo.App, instanceInfo.InstanceID)
+	go func() {
+		logger.Info("registering instance -> {}:{}", instanceInfo.App, instanceInfo.InstanceID)
 
-	err := discoveryClient.RegisterInstance(instanceInfo.App, instanceInfo)
+		retryDelay := utils.GetEnvDurationSeconds("REGISTER_RETRY_DELAY_SECONDS", 5*time.Second)
+		maxRetryDuration := utils.GetEnvDurationSeconds("REGISTER_MAX_RETRY_DURATION_SECONDS", 2*time.Minute)
 
-	if err != nil {
-		logger.Error("error registering instance: {}", err.Error())
-		return
-	}
+		var startTime = time.Now()
 
-	logger.Debug("instance registered -> {}:{}", instanceInfo.App, instanceInfo.InstanceID)
+		for {
+			elapsed := time.Since(startTime)
+
+			if elapsed > maxRetryDuration {
+				logger.Fatal("Failed to register instance after %s: %s:%s", maxRetryDuration, instanceInfo.App, instanceInfo.InstanceID)
+				panic("Error registering instance after max retries")
+			}
+
+			err := discoveryClient.RegisterInstance(instanceInfo.App, instanceInfo)
+
+			if err != nil {
+				logger.Error("Error registering instance (elapsed time: %s): %s", elapsed, err.Error())
+				time.Sleep(retryDelay)
+			} else {
+				logger.Info("Instance registered successfully -> {}:{}", instanceInfo.App, instanceInfo.InstanceID)
+				return
+			}
+		}
+	}()
 }
 
 func isInstanceNotFoundError(err *eureka.EurekaError) bool {
