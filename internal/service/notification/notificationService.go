@@ -17,7 +17,7 @@ func SendSignupSuccessEmail(requestId string, email string, name string) {
 
 	body := utils.GetSignupSuccessEmailBody(name)
 	recipients := [1]string{email}
-	event := generateNotificationEvent(recipients[:], "Welcome Aboard: Link Shortening Bliss! 🚀🎉", body, true, enums.NotificationTypeEmail)
+	event := generateNotificationEvent(recipients[:], "Welcome Aboard! Start Enjoying Link Shortening Bliss 🚀🎉", body, true, enums.NotificationTypeEmail)
 
 	kafkaService.GetInstance().PushNotificationEvent(requestId, *event)
 }
