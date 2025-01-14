@@ -9,6 +9,7 @@ import (
 
 	authDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao/auth"
 	oauthDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao/oauth"
+	kafka_service "github.com/akgarg0472/urlshortener-auth-service/internal/service/kafka"
 	notificationService "github.com/akgarg0472/urlshortener-auth-service/internal/service/notification"
 	tokenService "github.com/akgarg0472/urlshortener-auth-service/internal/service/token"
 	"github.com/akgarg0472/urlshortener-auth-service/model"
@@ -119,6 +120,10 @@ func ProcessCallbackRequest(
 		if user.Email != "" {
 			notificationService.SendSignupSuccessEmail(requestId, user.Email, user.Name)
 		}
+
+		// push user registered kafka event
+		kafka_service.GetInstance().PushUserRegisteredEvent(requestId, user.Id)
+
 	} else if err != nil && err.ErrorCode == 409 {
 		logger.Error("[{}] user already exists for oauthId/email: {}, {}", requestId, profileInfo.OAuthId, profileInfo.Email)
 		return nil, err

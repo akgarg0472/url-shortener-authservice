@@ -2,13 +2,15 @@ package auth_service
 
 import (
 	"fmt"
-	enums "github.com/akgarg0472/urlshortener-auth-service/constants"
 	"net/url"
 	"strings"
+
+	enums "github.com/akgarg0472/urlshortener-auth-service/constants"
 
 	"golang.org/x/crypto/bcrypt"
 
 	authDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao/auth"
+	kafka_service "github.com/akgarg0472/urlshortener-auth-service/internal/service/kafka"
 	notificationService "github.com/akgarg0472/urlshortener-auth-service/internal/service/notification"
 	tokenService "github.com/akgarg0472/urlshortener-auth-service/internal/service/token"
 	authModels "github.com/akgarg0472/urlshortener-auth-service/model"
@@ -114,6 +116,8 @@ func Signup(requestId string, signupRequest authModels.SignupRequest) (*authMode
 	if user.Email != nil {
 		notificationService.SendSignupSuccessEmail(requestId, *user.Email, user.Name)
 	}
+
+	kafka_service.GetInstance().PushUserRegisteredEvent(requestId, user.Id)
 
 	return &authModels.SignupResponse{
 		Message:    "Signup successful! You can now explore all of the exciting and amazing features",

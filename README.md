@@ -1,7 +1,7 @@
 # URL Shortener Authentication Service
 
 ![Java Version](https://img.shields.io/badge/golang-1.21-blue)
-![version](https://img.shields.io/badge/version-1.1.2-blue)
+![version](https://img.shields.io/badge/version-1.2.0-blue)
 
 This project is a URL Shortener Authentication Service written in Go. It handles authentication, user management, token-based security (JWT), and integrates with other services like Kafka for email notifications and Eureka for service discovery. This service is part of a larger URL shortener platform.
 
@@ -55,6 +55,7 @@ The project relies on a set of environment variables for configuration. Below is
 
 - `KAFKA_CONNECTION_URL`: Kafka connection URL. Default: `localhost:9092`
 - `KAFKA_TOPIC_EMAIL_NOTIFICATION`: Kafka topic for email notifications. Default: `urlshortener.notifications.email`
+- `KAFKA_TOPIC_USER_REGISTERED`: Kafka topic for user registration successful. Default: `user.registration.completed`
 
 ### Forgot Password Configuration
 
@@ -131,6 +132,7 @@ JWT_TOKEN_EXPIRY=60000
 
 KAFKA_CONNECTION_URL=localhost:9092
 KAFKA_TOPIC_EMAIL_NOTIFICATION=urlshortener.notifications.email
+KAFKA_TOPIC_USER_REGISTERED=user.registration.completed
 
 FORGOT_PASS_SECRET_KEY=z8MTCxxKUvHCgQ9rgCP9Si50haCa6y
 FORGOT_PASS_EXPIRY=600

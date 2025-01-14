@@ -27,14 +27,14 @@ func SendForgotPasswordEmail(
 	email string,
 	name string,
 	forgotPasswordUrl string,
-) bool {
+) {
 	logger.Info("[{}] Sending forgot password email to {}", requestId, email)
 
 	body := utils.GenerateForgotPasswordEmailBody(email, name, forgotPasswordUrl)
 	recipients := [1]string{email}
 	event := generateNotificationEvent(recipients[:], "Reset your UrlShortener password", body, true, enums.NotificationTypeEmail)
 
-	return kafkaService.GetInstance().PushNotificationEvent(requestId, *event)
+	kafkaService.GetInstance().PushNotificationEvent(requestId, *event)
 }
 
 func SendPasswordChangeSuccessEmail(requestId string, email string) {

@@ -10,10 +10,12 @@ import (
 )
 
 var (
-	logger                 = Logger.GetLogger("kafkaService.go")
-	instance               *KafkaService
-	kafkaWriter            *kafka.Writer
-	emailNotificationTopic = ""
+	logger                    = Logger.GetLogger("kafkaService.go")
+	instance                  *KafkaService
+	emailKafkaWriter          *kafka.Writer
+	userRegisteredKafkaWriter *kafka.Writer
+	emailNotificationTopic    = ""
+	userRegisteredTopic       = ""
 )
 
 type KafkaService struct {
@@ -37,25 +39,29 @@ func getKafkaWriter(kafkaURL string, topic string) *kafka.Writer {
 		Balancer:               &kafka.LeastBytes{},
 		Async:                  true,
 		AllowAutoTopicCreation: true,
+		RequiredAcks:           kafka.RequireOne,
 	}
 }
 
 func InitKafka() {
 	kafkaURL := utils.GetEnvVariable("KAFKA_CONNECTION_URL", "localhost:9092")
-	kafkaTopic := getEmailTopic()
+	emailKafkaTopic := getEmailTopic()
+	userRegisteredKafkaTopic := getUserRegisteredTopic()
 
-	logger.Debug("Initializing Kafka with url: {} and topic: {}", kafkaURL, kafkaTopic)
+	logger.Info("Initializing Kafka with url: {} and topic(s): {}", kafkaURL, []string{emailKafkaTopic, userRegisteredKafkaTopic})
 
-	kafkaWriter = getKafkaWriter(kafkaURL, kafkaTopic)
+	emailKafkaWriter = getKafkaWriter(kafkaURL, emailKafkaTopic)
+	userRegisteredKafkaWriter = getKafkaWriter(kafkaURL, userRegisteredKafkaTopic)
 
-	logger.Info("Kafka initialized: clusterIP={}, topic={}", kafkaWriter.Addr, kafkaWriter.Topic)
+	logger.Info("Kafka initialized (email): clusterIP={}, topic={}", emailKafkaWriter.Addr, emailKafkaWriter.Topic)
+	logger.Info("Kafka initialized (userRegistered): clusterIP={}, topic={}", userRegisteredKafkaWriter.Addr, userRegisteredKafkaWriter.Topic)
 }
 
 func CloseKafka() error {
-	if kafkaWriter != nil {
-		logger.Debug("Closing kafka connection")
-		kafkaCloseError := kafkaWriter.Close()
-		logger.Info("Kafka connection close status: {}", kafkaCloseError == nil)
+	if emailKafkaWriter != nil {
+		logger.Debug("Closing email kafka connection")
+		kafkaCloseError := emailKafkaWriter.Close()
+		logger.Info("Email Kafka connection close status: {}", kafkaCloseError == nil)
 		return kafkaCloseError
 	}
 
@@ -72,25 +78,59 @@ func getEmailTopic() string {
 	return emailNotificationTopic
 }
 
-func (kafkaService *KafkaService) PushNotificationEvent(reqId string, event model.NotificationEvent) bool {
-	logger.Debug("[{}] Pushing Event To Kafka topic [{}]: {}", reqId, emailNotificationTopic, event.String())
+func getUserRegisteredTopic() string {
+	userRegisteredTopic = utils.GetEnvVariable("KAFKA_TOPIC_USER_REGISTERED", "")
 
-	if kafkaWriter != nil {
+	if userRegisteredTopic == "" {
+		panic("KAFKA_TOPIC_USER_REGISTERED not found")
+	}
+
+	return userRegisteredTopic
+}
+
+func (kafkaService *KafkaService) PushNotificationEvent(reqId string, event model.NotificationEvent) {
+	logger.Debug("[{}] Pushing Notification Event To Kafka topic [{}]: {}", reqId, emailNotificationTopic, event.String())
+
+	if emailKafkaWriter != nil {
 		msgBytes, msgError := utils.ConvertToJsonBytes(event)
 
 		if msgError != nil {
 			logger.Error("[{}] Error converting notification event to bytes: {}", reqId, msgError.Error())
-			return false
+			return
 		}
 
 		message := kafka.Message{
 			Value: msgBytes,
 		}
 
-		msgWriteErr := kafkaWriter.WriteMessages(context.Background(), message)
+		msgWriteErr := emailKafkaWriter.WriteMessages(context.Background(), message)
 
-		return msgWriteErr == nil
+		logger.Debug("[{}] Kafka push result: {}", reqId, msgWriteErr == nil)
 	}
+}
 
-	return false
+func (kafkaService *KafkaService) PushUserRegisteredEvent(reqId string, userId string) {
+	logger.Debug("[{}] Pushing user Registered Event To Kafka topic [{}]: {}", reqId, userRegisteredTopic, userId)
+
+	if userRegisteredKafkaWriter != nil {
+		event := model.UserRegisteredEvent{
+			UserId: userId,
+		}
+
+		msgBytes, msgError := utils.ConvertToJsonBytes(event)
+
+		if msgError != nil {
+			logger.Error("[{}] Error converting user registered event to bytes: {}", reqId, msgError.Error())
+			return
+		}
+
+		message := kafka.Message{
+			Value: msgBytes,
+		}
+
+		msgWriteErr := userRegisteredKafkaWriter.WriteMessages(context.Background(), message)
+
+		logger.Debug("[{}] Kafka push result: {}", reqId, msgWriteErr == nil)
+
+	}
 }
