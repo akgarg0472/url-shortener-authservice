@@ -7,11 +7,14 @@ import (
 	"github.com/google/uuid"
 )
 
+var requestIdHeader = "X-Request-Id"
+
 func AddRequestIdHeader(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
-		requestId := generateRequestID()
-
-		httpRequest.Header.Add("Request-ID", requestId)
+		if httpRequest.Header.Get(requestIdHeader) == "" {
+			httpRequest = httpRequest.Clone(httpRequest.Context())
+			httpRequest.Header.Set(requestIdHeader, generateRequestID())
+		}
 
 		next.ServeHTTP(responseWriter, httpRequest)
 	})

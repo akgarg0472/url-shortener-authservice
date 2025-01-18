@@ -14,7 +14,7 @@ var (
 
 func ValidateRequestJSONContentType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
-		requestId := httpRequest.Header.Get("Request-ID")
+		requestId := httpRequest.Header.Get("X-Request-Id")
 		contentTypeHeader := "Content-Type"
 		applicationJsonContentTypeHeader := "application/json"
 

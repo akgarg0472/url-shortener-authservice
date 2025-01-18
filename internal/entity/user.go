@@ -1,6 +1,6 @@
 package entity
 
-import "github.com/akgarg0472/urlshortener-auth-service/constants"
+import enums "github.com/akgarg0472/urlshortener-auth-service/constants"
 
 type User struct {
 	Id                    string                    `gorm:"primaryKey;size:128" json:"id"`                 // varchar(128)
@@ -14,7 +14,6 @@ type User struct {
 	UserLoginType         enums.UserEntityLoginType `gorm:"type:varchar(50)" json:"login_type"`
 	OAuthId               *string                   `gorm:"column:oauth_id;uniqueIndex;size:255" json:"oauth_id,omitempty"`
 	OAuthProvider         *string                   `gorm:"column:oauth_provider;size:16" json:"oauth_provider,omitempty"`
-	PremiumAccount        bool                      `gorm:"default:0" json:"premium_account"`                      // tinyint(1)
 	City                  *string                   `gorm:"size:50" json:"city,omitempty"`                         // varchar(50)
 	State                 *string                   `gorm:"size:50" json:"state,omitempty"`                        // varchar(50)
 	Country               *string                   `gorm:"size:50" json:"country,omitempty"`                      // varchar(50)

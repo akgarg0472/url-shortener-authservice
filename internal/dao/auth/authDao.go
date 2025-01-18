@@ -3,8 +3,9 @@ package auth_dao
 import (
 	"errors"
 	"fmt"
-	"github.com/akgarg0472/urlshortener-auth-service/internal/entity"
 	"time"
+
+	"github.com/akgarg0472/urlshortener-auth-service/internal/entity"
 
 	MySQL "github.com/akgarg0472/urlshortener-auth-service/database"
 	"github.com/akgarg0472/urlshortener-auth-service/model"
@@ -46,6 +47,51 @@ func GetUserByEmail(requestId string, identity string) (*Models.User, *Models.Er
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			logger.Info("[{}]: No user found with email: {}", requestId, identity)
 			return nil, utils.GetErrorResponse("email not registered", 404)
+		} else {
+			logger.Error("[{}]: Error querying user=: {}", requestId, result.Error)
+		}
+
+		return nil, utils.InternalServerErrorResponse()
+	}
+
+	user := model.User{
+		Id:                  dbUser.Id,
+		Name:                dbUser.Name,
+		Email:               utils.GetStringOrNil(dbUser.Email),
+		Password:            utils.GetStringOrNil(dbUser.Password),
+		Scopes:              dbUser.Scopes,
+		ForgotPasswordToken: utils.GetStringOrNil(dbUser.ForgotPasswordToken),
+		LastLoginAt:         utils.GetInt64OrNil(dbUser.LastLoginAt),
+		PasswordChangedAt:   utils.GetInt64OrNil(dbUser.LastPasswordChangedAt),
+		IsDeleted:           dbUser.IsDeleted,
+		OAuthId:             utils.GetStringOrNil(dbUser.OAuthId),
+		LoginType:           dbUser.UserLoginType,
+		OAuthProvider:       utils.GetStringOrNil(dbUser.OAuthProvider),
+	}
+
+	logger.Debug("[{}] Fetched user: {}", requestId, user)
+
+	return &user, nil
+}
+
+func GetUserById(requestId string, identity string) (*Models.User, *Models.ErrorResponse) {
+	logger.Info("[{}]: Getting user by id -> {}", requestId, identity)
+
+	db := MySQL.GetInstance(requestId, "GetUserById")
+
+	if db == nil {
+		logErrorGettingDBInstance(requestId)
+		return nil, utils.InternalServerErrorResponse()
+	}
+
+	var dbUser entity.User
+
+	result := db.First(&dbUser, "id = ?", identity)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			logger.Info("[{}]: No user found with id: {}", requestId, identity)
+			return nil, utils.GetErrorResponse("User not found with id", 404)
 		} else {
 			logger.Error("[{}]: Error querying user=: {}", requestId, result.Error)
 		}

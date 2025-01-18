@@ -48,7 +48,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
-		Handler: loadRouters(),
+		Handler: loadRoutersV1(),
 	}
 
 	go func() {
@@ -84,11 +84,11 @@ func loadDotEnv() {
 	}
 }
 
-func loadRouters() *chi.Mux {
+func loadRoutersV1() *chi.Mux {
 	router := chi.NewRouter()
 
-	router.Mount("/auth/v1", Routers.AuthRouterV1())
-	router.Mount("/auth/v1/oauth", Routers.OAuthRouterV1())
+	router.Mount("/api/v1/auth", Routers.AuthRouterV1())
+	router.Mount("/api/v1/auth/oauth", Routers.OAuthRouterV1())
 	router.Mount("/", Routers.PingRouterV1())
 
 	return router

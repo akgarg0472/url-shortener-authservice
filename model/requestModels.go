@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+
 	enums "github.com/akgarg0472/urlshortener-auth-service/constants"
 )
 
@@ -43,6 +44,10 @@ type OAuthCallbackRequest struct {
 	Code     string              `json:"auth_code"`
 	Scope    string              `json:"scope"`
 	Provider enums.OAuthProvider `json:"provider"`
+}
+
+type VerifyAdminRequest struct {
+	UserId string `json:"user_id"`
 }
 
 func (request LoginRequest) String() string {

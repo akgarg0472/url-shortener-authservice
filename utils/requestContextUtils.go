@@ -11,6 +11,7 @@ var RequestContextKeys = struct {
 	ForgotPasswordRequestKey contextKey
 	OAuthCallbackRequestKey  contextKey
 	ResetPasswordRequestKey  contextKey
+	VerifyAdminRequestKey    contextKey
 }{
 	LoginRequestKey:          "loginRequest",
 	SignupRequestKey:         "signupRequest",
@@ -19,4 +20,5 @@ var RequestContextKeys = struct {
 	ForgotPasswordRequestKey: "forgotPasswordRequest",
 	OAuthCallbackRequestKey:  "oAuthCallbackRequest",
 	ResetPasswordRequestKey:  "resetPasswordRequest",
+	VerifyAdminRequestKey:    "verifyAdminRequest",
 }

@@ -57,5 +57,12 @@ func AuthRouterV1() *chi.Mux {
 		r.Post("/", AuthHandler.ResetPasswordHandler)
 	})
 
+	router.Route("/verify-admin", func(r chi.Router) {
+		r.Use(Middlewares.AddRequestIdHeader)
+		r.Use(Middlewares.ValidateRequestJSONContentType)
+		r.Use(Middlewares.VerifyAdminRequestBodyHandler)
+		r.Post("/", AuthHandler.VerifyAdminHandler)
+	})
+
 	return router
 }

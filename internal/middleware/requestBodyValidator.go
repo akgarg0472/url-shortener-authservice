@@ -12,7 +12,7 @@ import (
 )
 
 var rbvLogger = Logger.GetLogger("requestBodyValidator.go")
-var requestIdHeaderName = "Request-ID"
+var requestIdHeaderName = "X-Request-Id"
 var invalidRequestBodyMessage = "Invalid request body"
 var requestValidationFailedMessage = "Request validation failed"
 
@@ -300,6 +300,52 @@ func OAuthCallbackRequestBodyValidator(next http.Handler) http.Handler {
 
 		ctx := context.WithValue(httpRequest.Context(), utils.RequestContextKeys.OAuthCallbackRequestKey, oAuthCallbackRequest)
 
+		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
+	})
+}
+
+func VerifyAdminRequestBodyHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+		requestId := httpRequest.Header.Get(requestIdHeaderName)
+
+		var verifyAdminRequest AuthModels.VerifyAdminRequest
+
+		decodeError := decodeRequestBody(httpRequest, &verifyAdminRequest)
+
+		if decodeError != nil {
+			rbvLogger.Error("[{}]: Error decoding verify admin request body: {}", requestId, decodeError.Error())
+			resp := utils.GetErrorResponse(invalidRequestBodyMessage, 400)
+			errorJsonResponse, _ := utils.ConvertToJsonBytes(resp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorJsonResponse)
+			return
+		}
+
+		validationErrors := utils.ValidateRequestFields(verifyAdminRequest)
+
+		if validationErrors != nil {
+			rbvLogger.Error("[{}]: Verify Admin Request Validation failed", requestId)
+			errResp := AuthModels.ErrorResponse{
+				Message:   requestValidationFailedMessage,
+				ErrorCode: 400,
+				Errors:    validationErrors,
+			}
+			errorResponse, _ := json.Marshal(errResp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
+			return
+		}
+
+		if verifyAdminRequest.UserId == "" {
+			rbvLogger.Error("[{}]: Verify Admin Request Validation failed", requestId)
+			errResp := AuthModels.ErrorResponse{
+				Message:   "Please provide valid user_id",
+				ErrorCode: 400,
+				Errors:    validationErrors,
+			}
+			errorResponse, _ := json.Marshal(errResp)
+			writeErrorResponse(responseWriter, http.StatusBadRequest, errorResponse)
+			return
+		}
+		ctx := context.WithValue(httpRequest.Context(), utils.RequestContextKeys.VerifyAdminRequestKey, verifyAdminRequest)
 		next.ServeHTTP(responseWriter, httpRequest.WithContext(ctx))
 	})
 }

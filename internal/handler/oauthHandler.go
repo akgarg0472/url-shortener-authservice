@@ -27,7 +27,7 @@ func GetOAuthProvidersHandler(responseWriter http.ResponseWriter, httpRequest *h
 func OAuthCallbackHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	context := httpRequest.Context()
 
-	requestId := httpRequest.Header.Get("Request-ID")
+	requestId := httpRequest.Header.Get("X-Request-Id")
 	oAuthCallbackRequest := context.Value(utils.RequestContextKeys.OAuthCallbackRequestKey).(model.OAuthCallbackRequest)
 
 	oauthLogger.Trace("[{}]: OAuth Callback request received on handler -> {}", requestId, oAuthCallbackRequest)

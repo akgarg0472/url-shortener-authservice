@@ -306,3 +306,43 @@ func ResetPassword(requestId string, resetPasswordRequest authModels.ResetPasswo
 		StatusCode: 200,
 	}, nil
 }
+
+// VerifyAdmin Function to check if userId is associated with an admin account or not
+func VerifyAdmin(requestId string, verifyAdminRequest authModels.VerifyAdminRequest) (*authModels.VerifyAdminResponse, *authModels.ErrorResponse) {
+	logger.Info("[{}]: Processing Verify admin Request", requestId)
+
+	userId := verifyAdminRequest.UserId
+
+	user, err := authDao.GetUserById(requestId, userId)
+
+	if err != nil {
+		logger.Error("[{}] Failed to fetch admin user by ID", requestId)
+		return nil, err
+	}
+
+	scopes := strings.Split(user.Scopes, ",")
+
+	var adminScopeFound = false
+
+	for _, scope := range scopes {
+		if strings.Contains(strings.ToLower(scope), "admin") {
+			adminScopeFound = true
+			break
+		}
+	}
+
+	if !adminScopeFound {
+		response := &authModels.VerifyAdminResponse{
+			Success:    false,
+			Message:    "Admin scope not found",
+			StatusCode: 200,
+		}
+		return response, nil
+	}
+
+	return &authModels.VerifyAdminResponse{
+		Success:    true,
+		Message:    "Admin verified successfully",
+		StatusCode: 200,
+	}, nil
+}

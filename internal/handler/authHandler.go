@@ -10,7 +10,7 @@ import (
 )
 
 var authLogger = Logger.GetLogger("authHandler.go")
-var requestIdHeader = "Request-ID"
+var requestIdHeader = "X-Request-Id"
 
 // LoginHandler Handler Function to handle login request
 func LoginHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
@@ -112,4 +112,18 @@ func ResetPasswordHandler(responseWriter http.ResponseWriter, httpRequest *http.
 	resetPasswordResponse, resetPasswordError := authService.ResetPassword(requestId, resetPasswordRequest)
 
 	sendResponseToClient(responseWriter, requestId, resetPasswordResponse, resetPasswordError, 200)
+}
+
+// VerifyAdminHandler Handler function to handle verify admin request
+func VerifyAdminHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+	context := httpRequest.Context()
+
+	requestId := httpRequest.Header.Get(requestIdHeader)
+	verifyAdminRequest := context.Value(utils.RequestContextKeys.VerifyAdminRequestKey).(authModels.VerifyAdminRequest)
+
+	authLogger.Trace("[{}]: Verify Admin request received on handler -> {}", requestId, verifyAdminRequest)
+
+	verifyAdminResponse, verifyAdminError := authService.VerifyAdmin(requestId, verifyAdminRequest)
+
+	sendResponseToClient(responseWriter, requestId, verifyAdminResponse, verifyAdminError, 200)
 }
