@@ -1,7 +1,6 @@
 package consul
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"strconv"
@@ -34,7 +33,7 @@ func InitDiscoveryClient(port int) {
 	appId := "urlshortener-auth-service"
 	host := utils.GetHostIP()
 
-	instanceId := fmt.Sprintf("%s:%s:%d", generateRandomInstanceId(), appId, port)
+	instanceId := fmt.Sprintf("%s:%s:%d", host, appId, port)
 	appAddress := "urlshortener-auth-service"
 
 	instanceInfo = eureka.NewInstanceInfo(host, appId, host, port, 60, false)
@@ -136,22 +135,4 @@ func registerInstance() {
 
 func isInstanceNotFoundError(err *eureka.EurekaError) bool {
 	return err != nil && err.ErrorCode == 502 && err.Message == "Instance resource not found"
-}
-
-func generateRandomInstanceId() string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	const length = 12
-	var result strings.Builder
-	randomBytes := make([]byte, length)
-
-	_, err := rand.Read(randomBytes)
-	if err != nil {
-		return utils.GetHostIP()
-	}
-
-	for _, b := range randomBytes {
-		result.WriteByte(charset[b%byte(len(charset))])
-	}
-
-	return result.String()
 }
