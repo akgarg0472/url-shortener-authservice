@@ -27,9 +27,9 @@ func InitDiscoveryClient(port int) {
 		return
 	}
 
-	discClientMachinesIP := strings.Split(utils.GetEnvVariable("DISCOVERY_CLIENT_IP", "http://localhost:8761/eureka/v2"), ",")
+	discoveryServerIp := strings.Split(utils.GetEnvVariable("DISCOVERY_SERVER_IP", "http://localhost:8761/eureka/v2"), ",")
 
-	discoveryClient = eureka.NewClient(discClientMachinesIP)
+	discoveryClient = eureka.NewClient(discoveryServerIp)
 
 	appId := "urlshortener-auth-service"
 	host := utils.GetHostIP()
@@ -41,6 +41,8 @@ func InitDiscoveryClient(port int) {
 	instanceInfo.InstanceID = instanceId
 	instanceInfo.VipAddress = appAddress
 	instanceInfo.SecureVipAddress = appAddress
+	instanceInfo.HealthCheckUrl = fmt.Sprintf("http://%s:%d/admin/health", host, port)
+	instanceInfo.StatusPageUrl = fmt.Sprintf("http://%s:%d/admin/info", host, port)
 
 	registerInstance()
 	initHeartbeat()

@@ -30,7 +30,11 @@ func init() {
 }
 
 var (
-	logger = Logger.GetLogger("main.go")
+	logger    = Logger.GetLogger("main.go")
+	BuildTime string
+	GitCommit string
+	BuildHost string
+	BuildEnv  string
 )
 
 func main() {
@@ -42,7 +46,12 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	port, _ := strconv.Atoi(Utils.GetEnvVariable("SERVER_PORT", "8081"))
+	portEnv := Utils.GetEnvVariable("SERVER_PORT", "8081")
+	port, err := strconv.Atoi(portEnv)
+
+	if err != nil {
+		panic("Invalid port value defined in environment: " + portEnv)
+	}
 
 	DiscoveryClient.InitDiscoveryClient(port)
 
@@ -66,12 +75,11 @@ func main() {
 	// Wait for a termination signal
 	<-sigCh
 
-	// Start the graceful server shutdown
 	logger.Info("Shutting down server gracefully...")
 
-	err := server.Shutdown(ctx)
+	shutdownError := server.Shutdown(ctx)
 
-	if err != nil {
+	if shutdownError != nil {
 		logger.Error("Error during server shutdown: {}", err)
 	}
 }
@@ -90,6 +98,7 @@ func loadRoutersV1() *chi.Mux {
 	router.Mount("/api/v1/auth", Routers.AuthRouterV1())
 	router.Mount("/api/v1/auth/oauth", Routers.OAuthRouterV1())
 	router.Mount("/", Routers.PingRouterV1())
+	router.Mount("/admin", Routers.DiscoveryRouterV1())
 
 	return router
 }

@@ -15,7 +15,12 @@ RUN go mod tidy
 
 COPY . .
 
-RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o authservice ./cmd/authservice/main.go
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags "-X 'github.com/akgarg0472/urlshortener-auth-service/build.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)' \
+    -X 'github.com/akgarg0472/urlshortener-auth-service/build.GoVersion=$(go version | cut -d' ' -f3)' \
+    -X 'github.com/akgarg0472/urlshortener-auth-service/build.OS=$(go env GOOS)' \
+    -X 'github.com/akgarg0472/urlshortener-auth-service/build.Arch=$(go env GOARCH)' \
+    -X 'github.com/akgarg0472/urlshortener-auth-service/build.AppVersion=$(cat VERSION)'" \
+    -o authservice ./cmd/authservice/main.go
 
 # Step 2: Create the final image to run the binary
 FROM alpine:latest
