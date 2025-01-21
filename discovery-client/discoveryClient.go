@@ -90,11 +90,12 @@ func sendHeartbeat() {
 	err := discoveryClient.SendHeartbeat(instanceInfo.App, instanceInfo.InstanceID)
 
 	if err != nil {
-		var err *eureka.EurekaError
-		isEurekaError := errors.As(err, &err)
+		var error *eureka.EurekaError
+		isEurekaError := errors.As(err, &error)
 
 		if isEurekaError {
-			if isInstanceNotFoundError(err) {
+			if isInstanceNotFoundError(error) {
+				logger.Debug("Re-Registering instance with discovery server")
 				registerInstance()
 			}
 		}
