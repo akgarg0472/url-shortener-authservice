@@ -189,3 +189,66 @@ You can run the application with custom environment variables using the docker r
 ```bash
 docker run --network=host --env-file .env akgarg0472/urlshortener-auth-service:1.0.0
 ```
+
+## OAuth Provider Configuration
+
+To enable OAuth authentication for your application, you'll need to configure the OAuth provider settings in your database. The following steps outline how to populate the OAuth provider table with the necessary details for GitHub and Google OAuth integration.
+
+### 1. Add OAuth Providers to the Database:
+
+Use the MySQL queries below to insert OAuth provider information into your `oauth_providers` table.
+
+#### GitHub OAuth Configuration
+
+To integrate GitHub OAuth, run the following SQL query:
+
+```sql
+INSERT INTO oauth_providers (provider, client_id, base_url, redirect_uri, access_type, scope)
+VALUES
+  ('github',
+   'xxxxxxxx',
+   'https://github.com/login/oauth/authorize',
+   'http://localhost:3000/oauth/github/success',
+   '',
+   'user');
+```
+
+- **client_id**: Replace `'xxxxxxxx'` with your GitHub OAuth application's client ID.
+- **redirect_uri**: Update with the appropriate redirect URI for your application (this should match the URL configured in your GitHub OAuth settings).
+- **scope**: `'user'` specifies the permission scope for the user profile. Adjust as necessary for your app.
+
+#### Google OAuth Configuration
+
+To integrate Google OAuth, use this SQL query:
+
+```sql
+INSERT INTO oauth_providers (provider, client_id, base_url, redirect_uri, access_type, scope)
+VALUES
+  ('google',
+   'xxxxxxxxxxxxx-yyyyyyyyyyyyyy.apps.googleusercontent.com',
+   'https://accounts.google.com/o/oauth2/v2/auth',
+   'http://localhost:3000/oauth/google/success',
+   '',
+   'openid email profile');
+```
+
+- **client_id**: Replace `'xxxxxxxxxxxxx-yyyyyyyyyyyyyy.apps.googleusercontent.com'` with your Google OAuth application's client ID.
+- **redirect_uri**: Update with the appropriate redirect URI for your application (this should match the URL configured in your Google Cloud Console OAuth settings).
+- **scope**: `'openid email profile'` grants access to the user’s basic profile, email, and OpenID information. Adjust the scope as per your application's requirements.
+
+### 2. Restart the Authentication Service
+
+After inserting the configuration into the table, **restart the authentication service** to apply the changes and enable OAuth functionality.
+
+> ​  
+> **Note**:
+>
+> 1.  Ensure that you’ve properly registered your OAuth applications on GitHub and Google, and that your client IDs and secret keys are correctly configured.
+> 2.  The provided redirect URIs should match the ones registered in your OAuth application settings on both GitHub and Google.  
+>     ​
+
+For more details, refer to the official documentations:
+
+- [GitHub OAuth Documentation](https://docs.github.com/en/developers/apps/building-oauth-apps)
+- [Authorizing OAuth Apps](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps)
+- [Google OAuth Documentation](https://developers.google.com/identity/protocols/oauth2)
