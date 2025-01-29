@@ -156,6 +156,7 @@ func ProcessCallbackRequest(
 		Success:   true,
 		IsNewUser: newUser,
 		Message:   message,
+		LoginType: string(user.LoginType),
 	}, nil
 }
 

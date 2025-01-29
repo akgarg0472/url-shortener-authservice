@@ -5,7 +5,7 @@ import enums "github.com/akgarg0472/urlshortener-auth-service/constants"
 type User struct {
 	Id                    string                    `gorm:"primaryKey;size:128" json:"id"`                 // varchar(128)
 	Email                 *string                   `gorm:"uniqueIndex;size:255" json:"email"`             // varchar(255)
-	Password              *string                   `gorm:"size:255;" json:"password"`                     // varchar(255)
+	Password              *string                   `gorm:"size:255;nullable=true" json:"password"`        // varchar(255)
 	Scopes                string                    `gorm:"size:32" json:"scopes"`                         // varchar(32)
 	Name                  string                    `gorm:"size:255" json:"name"`                          // varchar(255)
 	Bio                   *string                   `gorm:"type:text" json:"bio,omitempty"`                // text

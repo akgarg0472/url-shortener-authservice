@@ -8,7 +8,6 @@ import (
 	"github.com/akgarg0472/urlshortener-auth-service/internal/entity"
 
 	MySQL "github.com/akgarg0472/urlshortener-auth-service/database"
-	"github.com/akgarg0472/urlshortener-auth-service/model"
 	Models "github.com/akgarg0472/urlshortener-auth-service/model"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
@@ -54,7 +53,7 @@ func GetUserByEmail(requestId string, identity string) (*Models.User, *Models.Er
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	user := model.User{
+	user := Models.User{
 		Id:                  dbUser.Id,
 		Name:                dbUser.Name,
 		Email:               utils.GetStringOrNil(dbUser.Email),
@@ -99,7 +98,7 @@ func GetUserById(requestId string, identity string) (*Models.User, *Models.Error
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	user := model.User{
+	user := Models.User{
 		Id:                  dbUser.Id,
 		Name:                dbUser.Name,
 		Email:               utils.GetStringOrNil(dbUser.Email),
@@ -144,7 +143,7 @@ func GetUserByOAuthId(requestId string, oAuthId string) (*Models.User, *Models.E
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	user := model.User{
+	user := Models.User{
 		Id:                  dbUser.Id,
 		Name:                dbUser.Name,
 		Email:               utils.GetStringOrNil(dbUser.Email),
@@ -156,6 +155,7 @@ func GetUserByOAuthId(requestId string, oAuthId string) (*Models.User, *Models.E
 		IsDeleted:           dbUser.IsDeleted,
 		OAuthId:             *dbUser.OAuthId,
 		OAuthProvider:       *dbUser.OAuthProvider,
+		LoginType:           dbUser.UserLoginType,
 	}
 
 	logger.Info("[{}] Fetched user: {}", requestId, user)

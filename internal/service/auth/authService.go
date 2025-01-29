@@ -70,6 +70,7 @@ func LoginWithEmailPassword(requestId string, loginRequest authModels.LoginReque
 		UserId:      user.Id,
 		Name:        user.Name,
 		Email:       user.Email,
+		LoginType:   string(user.LoginType),
 	}, nil
 }
 
@@ -168,6 +169,14 @@ func GenerateAndSendForgotPasswordToken(requestId string, forgotPasswordRequest 
 			Message:   err.Message,
 			Errors:    err.Errors,
 			ErrorCode: err.ErrorCode,
+		}
+	}
+
+	if user.LoginType == enums.UserEntityLoginTypeOauthAndOtp || user.LoginType == enums.UserEntityLoginTypeOauthOnly {
+		return nil, &authModels.ErrorResponse{
+			Message:   "Invalid Request",
+			Errors:    fmt.Sprintf("You are not allowed to reset password. Please login using %s oAuth", user.OAuthProvider),
+			ErrorCode: 400,
 		}
 	}
 

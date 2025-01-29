@@ -7,6 +7,7 @@ type LoginResponse struct {
 	UserId      string `json:"user_id"`
 	Name        string `json:"name"`
 	Email       string `json:"email"`
+	LoginType   string `json:"login_type"`
 }
 
 type SignupResponse struct {
@@ -72,6 +73,7 @@ type OAuthCallbackResponse struct {
 	Name      string `json:"name"`
 	IsNewUser bool   `json:"is_new_user"`
 	Message   string `json:"message"`
+	LoginType string `json:"login_type"`
 }
 
 func (c OAuthProvider) String() string {

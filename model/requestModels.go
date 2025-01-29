@@ -59,5 +59,5 @@ func (request SignupRequest) String() string {
 }
 
 func (r OAuthCallbackRequest) String() string {
-	return fmt.Sprintf("OAuthCallbackRequest {State: %s, Code: %s, Scope: %s, Provider: %s}", r.State, r.Code, r.Scope, r.Provider)
+	return fmt.Sprintf("OAuthCallbackRequest {State: %s, Scope: %s, Provider: %s}", r.State, r.Scope, r.Provider)
 }
