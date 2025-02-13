@@ -68,7 +68,15 @@ func FetchGoogleProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		logger.Error("[{}] invalid status code received from access token request: {}", reqId, resp.StatusCode)
+		var response map[string]any
+		er := json.NewDecoder(resp.Body).Decode(&response)
+
+		if er == nil {
+			logger.Error("[{}] Non 2xx status code {} received from access token request with response body: {}", reqId, resp.StatusCode, response)
+		} else {
+			logger.Error("[{}] Non 2xx status code {} received from access token request", reqId, resp.StatusCode)
+		}
+
 		return nil, utils.InternalServerErrorResponse()
 	}
 
