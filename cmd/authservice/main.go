@@ -15,6 +15,7 @@ import (
 
 	DB "github.com/akgarg0472/urlshortener-auth-service/database"
 	DiscoveryClient "github.com/akgarg0472/urlshortener-auth-service/discovery-client"
+	Metrics "github.com/akgarg0472/urlshortener-auth-service/internal/metrics"
 	Routers "github.com/akgarg0472/urlshortener-auth-service/internal/router"
 	OAuthService "github.com/akgarg0472/urlshortener-auth-service/internal/service/auth/oauth"
 	KafkaService "github.com/akgarg0472/urlshortener-auth-service/internal/service/kafka"
@@ -27,6 +28,7 @@ func init() {
 	DB.InitDB()
 	OAuthService.InitOAuthProviders()
 	KafkaService.InitKafka()
+	Metrics.InitPrometheus()
 }
 
 var (
@@ -95,10 +97,13 @@ func loadDotEnv() {
 func loadRoutersV1() *chi.Mux {
 	router := chi.NewRouter()
 
+	router.Use(Metrics.PrometheusMiddleware)
+
 	router.Mount("/api/v1/auth", Routers.AuthRouterV1())
 	router.Mount("/api/v1/auth/oauth", Routers.OAuthRouterV1())
 	router.Mount("/", Routers.PingRouterV1())
 	router.Mount("/admin", Routers.DiscoveryRouterV1())
+	router.Handle("/prometheus/metrics", Metrics.MetricsHandler())
 
 	return router
 }
