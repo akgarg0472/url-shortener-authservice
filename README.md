@@ -1,14 +1,14 @@
 # URL Shortener Authentication Service
 
 ![Java Version](https://img.shields.io/badge/golang-1.21-blue)
-![version](https://img.shields.io/badge/version-1.6.0-blue)
+![version](https://img.shields.io/badge/version-1.6.1-blue)
 
-This project is a URL Shortener Authentication Service written in Go. It handles authentication, user management, token-based security (JWT), and integrates with other services like Kafka for email notifications and Eureka for service discovery. This service is part of a larger URL shortener platform.
+This project is a URL Shortener Authentication Service written in Go. It handles authentication, user management, token-based security (JWT), and integrates with other services like Kafka for email notifications and Consul for service discovery. This service is part of a larger URL shortener platform.
 
 ## Features
 
 - **User Authentication**: JWT-based token authentication for secure API access.
-- **Service Discovery**: Integration with Eureka for service registration and health checks.
+- **Service Discovery**: Integration with Discovery Server for service registration and health checks.
 - **Database Integration**: MySQL database for storing user data and other relevant information.
 - **Kafka Integration**: Publish email notifications to Kafka topics.
 - **OAuth Integration**: Supports OAuth with Google and GitHub for user authentication.
@@ -26,8 +26,8 @@ The project relies on a set of environment variables for configuration. Below is
 
 ### Service Discovery
 
-- `ENABLE_DISCOVERY_CLIENT`: Enable Eureka client for service discovery (`true`/`false`). Default: `true`
-- `DISCOVERY_CLIENT_IP`: Eureka service URL for registering and heartbeat. Default: `http://localhost:8761/eureka/v2`
+- `ENABLE_DISCOVERY_CLIENT`: Enable Discovery client for service discovery (`true`/`false`). Default: `true`
+- `DISCOVERY_SERVER_IP`: Discovery service URL for registering and heartbeat. Default: `http://localhost:8500`
 - `DISCOVERY_CLIENT_HEARTBEAT_FREQEUENCY_DURATION`: Heartbeat frequency in seconds. Default: `30`
 -
 
@@ -91,7 +91,7 @@ Make sure you have the following installed on your system:
 - **Docker** (optional, if you want to use Docker to run the service).
 - **MySQL**: For local development, you need a MySQL database running.
 - **Kafka** (optional, if you want to use Kafka for notifications).
-- **Eureka Server** (optional, if you are using Eureka for service discovery).
+- **Discovery Server** (optional, if you are using Consul/Eureka or any other for service discovery).
 
 ## Running the Project
 
@@ -113,7 +113,7 @@ LOGGER_ENABLED=true
 LOGGER_LOG_FILE_PATH=/tmp/logs.log
 
 ENABLE_DISCOVERY_CLIENT=true
-DISCOVERY_CLIENT_IP=http://localhost:8761/eureka/v2
+DISCOVERY_SERVER_IP=http://localhost:8500
 DISCOVERY_CLIENT_HEARTBEAT_FREQEUENCY_DURATION=30
 
 MYSQL_DB_USERNAME=root

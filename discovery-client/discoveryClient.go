@@ -24,7 +24,7 @@ func InitDiscoveryClient(port int) {
 		return
 	}
 
-	consulAddress := utils.GetEnvVariable("CONSUL_SERVER_IP", "http://127.0.0.1:8500")
+	consulAddress := utils.GetEnvVariable("DISCOVERY_SERVER_IP", "http://127.0.0.1:8500")
 
 	config := api.DefaultConfig()
 	config.Address = consulAddress
