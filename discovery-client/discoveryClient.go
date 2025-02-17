@@ -48,11 +48,11 @@ func registerService(port int, host string) {
 		Name:    serviceName,
 		Port:    port,
 		Address: host,
-		// Check: &api.AgentServiceCheck{
-		// 	HTTP:     fmt.Sprintf("http://%s:%d/admin/health", host, port),
-		// 	Interval: "10s",
-		// 	Timeout:  "5s",
-		// },
+		Check: &api.AgentServiceCheck{
+			HTTP:     fmt.Sprintf("http://%s:%d/admin/health", host, port),
+			Interval: "30s",
+			Timeout:  "5s",
+		},
 	}
 
 	retryDelay := utils.GetEnvDurationSeconds("REGISTER_RETRY_DELAY_SECONDS", 5*time.Second)
