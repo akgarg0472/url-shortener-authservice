@@ -6,7 +6,7 @@ import (
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
-func ReadConfig(path string) Config {
+func ReadConfig() Config {
 	config := Config{}
 
 	config.Level = utils.GetEnvVariable("LOGGER_LEVEL", "INFO")

@@ -1,139 +1,136 @@
-package consul
+package discoveryclient
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/ArthurHlt/go-eureka-client/eureka"
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
+	"github.com/hashicorp/consul/api"
 )
 
 var (
-	logger          = Logger.GetLogger("discoveryClient.go")
-	discoveryClient *eureka.Client
-	instanceInfo    *eureka.InstanceInfo
+	logger       = Logger.GetLogger("discoveryClient.go")
+	consulClient *api.Client
+	serviceID    string
+	serviceName  = "urlshortener-auth-service"
 )
 
 func InitDiscoveryClient(port int) {
 	isDiscoveryClientEnabled, err := strconv.ParseBool(utils.GetEnvVariable("ENABLE_DISCOVERY_CLIENT", "false"))
-
 	if err != nil || !isDiscoveryClientEnabled {
 		logger.Info("Discovery client is disabled in configuration")
 		return
 	}
 
-	discoveryServerIp := strings.Split(utils.GetEnvVariable("DISCOVERY_SERVER_IP", "http://localhost:8761/eureka/v2"), ",")
+	consulAddress := utils.GetEnvVariable("CONSUL_SERVER_IP", "http://127.0.0.1:8500")
 
-	discoveryClient = eureka.NewClient(discoveryServerIp)
+	config := api.DefaultConfig()
+	config.Address = consulAddress
+	consulClient, err = api.NewClient(config)
+	if err != nil {
+		logger.Fatal("Failed to create Consul client: %v", err)
+	}
 
-	appId := "urlshortener-auth-service"
 	host := utils.GetHostIP()
+	serviceID = fmt.Sprintf("%s-%d", serviceName, port)
 
-	instanceId := fmt.Sprintf("%s:%s:%d", host, appId, port)
-	appAddress := "urlshortener-auth-service"
+	registerService(port, host)
+	initHeartbeat(port, host)
+}
 
-	instanceInfo = eureka.NewInstanceInfo(host, appId, host, port, 60, false)
-	instanceInfo.InstanceID = instanceId
-	instanceInfo.VipAddress = appAddress
-	instanceInfo.SecureVipAddress = appAddress
-	instanceInfo.HealthCheckUrl = fmt.Sprintf("http://%s:%d/admin/health", host, port)
-	instanceInfo.StatusPageUrl = fmt.Sprintf("http://%s:%d/admin/info", host, port)
+func registerService(port int, host string) {
+	logger.Info("Registering service with Consul: {}:{}", serviceName, serviceID)
 
-	registerInstance()
-	initHeartbeat()
+	registration := &api.AgentServiceRegistration{
+		ID:      serviceID,
+		Name:    serviceName,
+		Port:    port,
+		Address: host,
+		// Check: &api.AgentServiceCheck{
+		// 	HTTP:     fmt.Sprintf("http://%s:%d/admin/health", host, port),
+		// 	Interval: "10s",
+		// 	Timeout:  "5s",
+		// },
+	}
+
+	retryDelay := utils.GetEnvDurationSeconds("REGISTER_RETRY_DELAY_SECONDS", 5*time.Second)
+	maxRetryDuration := utils.GetEnvDurationSeconds("REGISTER_MAX_RETRY_DURATION_SECONDS", 2*time.Minute)
+	startTime := time.Now()
+
+	for {
+		if time.Since(startTime) > maxRetryDuration {
+			logger.Fatal("Failed to register service after %s: %s", maxRetryDuration, serviceName)
+			panic("Error registering service after max retries")
+		}
+
+		err := consulClient.Agent().ServiceRegister(registration)
+		if err != nil {
+			logger.Error("Error registering service (elapsed time: %s): %s", time.Since(startTime), err.Error())
+			time.Sleep(retryDelay)
+		} else {
+			logger.Info("Service registered successfully -> {}:{}", serviceName, serviceID)
+			return
+		}
+	}
 }
 
 func UnregisterInstance() error {
-	if discoveryClient == nil {
-		return fmt.Errorf("discovery client is not initialized")
+	if consulClient == nil {
+		return fmt.Errorf("onsul client is not initialized")
 	}
 
-	logger.Info("unregistering instance -> {}, {}", instanceInfo.App, instanceInfo.InstanceID)
+	logger.Info("Unregistering service -> {}, {}", serviceName, serviceID)
 
-	deleteEndpoint := fmt.Sprintf("apps/%s/%s", instanceInfo.App, instanceInfo.InstanceID)
-
-	_, err := discoveryClient.Delete(deleteEndpoint)
-
+	err := consulClient.Agent().ServiceDeregister(serviceID)
 	if err != nil {
-		logger.Error("error unregistering instance: {}", err.Error())
+		logger.Error("Error unregistering service: {}", err.Error())
 		return err
 	}
 
+	logger.Info("Service successfully unregistered from Consul")
 	return nil
 }
 
-func initHeartbeat() {
+func initHeartbeat(port int, host string) {
 	go func() {
 		duration, err := strconv.ParseInt(utils.GetEnvVariable("DISCOVERY_CLIENT_HEARTBEAT_FREQUENCY_DURATION", "30"), 10, 64)
-
 		if err != nil || duration < 30 {
 			duration = 30
 		}
 
 		heartbeatFrequency := time.Duration(duration * int64(time.Second))
-
 		time.Sleep(heartbeatFrequency)
 
 		for {
-			sendHeartbeat()
+			sendHeartbeat(port, host)
 			time.Sleep(heartbeatFrequency)
 		}
 	}()
 }
 
-func sendHeartbeat() {
-	logger.Debug("sending heartbeat -> {}, {}", instanceInfo.App, instanceInfo.InstanceID)
-	err := discoveryClient.SendHeartbeat(instanceInfo.App, instanceInfo.InstanceID)
+func sendHeartbeat(port int, host string) {
+	logger.Debug("Sending heartbeat -> {}, {}", serviceName, serviceID)
 
+	services, _, err := consulClient.Health().Service(serviceName, "", true, nil)
 	if err != nil {
-		var error *eureka.EurekaError
-		isEurekaError := errors.As(err, &error)
-
-		if isEurekaError {
-			if isInstanceNotFoundError(error) {
-				logger.Debug("Re-Registering instance with discovery server")
-				registerInstance()
-			}
-		}
-	} else {
-		logger.Trace("heartbeat sent successfully -> {}, {}", instanceInfo.App, instanceInfo.InstanceID)
+		logger.Error("Failed to fetch service status from Consul: {}", err.Error())
+		return
 	}
-}
 
-func registerInstance() {
-	go func() {
-		logger.Info("registering instance -> {}:{}", instanceInfo.App, instanceInfo.InstanceID)
-
-		retryDelay := utils.GetEnvDurationSeconds("REGISTER_RETRY_DELAY_SECONDS", 5*time.Second)
-		maxRetryDuration := utils.GetEnvDurationSeconds("REGISTER_MAX_RETRY_DURATION_SECONDS", 2*time.Minute)
-
-		var startTime = time.Now()
-
-		for {
-			elapsed := time.Since(startTime)
-
-			if elapsed > maxRetryDuration {
-				logger.Fatal("Failed to register instance after %s: %s:%s", maxRetryDuration, instanceInfo.App, instanceInfo.InstanceID)
-				panic("Error registering instance after max retries")
-			}
-
-			err := discoveryClient.RegisterInstance(instanceInfo.App, instanceInfo)
-
-			if err != nil {
-				logger.Error("Error registering instance (elapsed time: %s): %s", elapsed, err.Error())
-				time.Sleep(retryDelay)
-			} else {
-				logger.Info("Instance registered successfully -> {}:{}", instanceInfo.App, instanceInfo.InstanceID)
-				return
-			}
+	isRegistered := false
+	for _, service := range services {
+		if service.Service.ID == serviceID {
+			isRegistered = true
+			break
 		}
-	}()
-}
+	}
 
-func isInstanceNotFoundError(err *eureka.EurekaError) bool {
-	return err != nil && err.ErrorCode == 502 && err.Message == "Instance resource not found"
+	if !isRegistered {
+		logger.Debug("Service not found in Consul, re-registering...")
+		registerService(port, host)
+	} else {
+		logger.Trace("Service heartbeat successful -> {}, {}", serviceName, serviceID)
+	}
 }

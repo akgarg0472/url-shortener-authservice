@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -70,6 +69,5 @@ func (rw *responseWriterWrapper) WriteHeader(code int) {
 
 // MetricsHandler returns the Prometheus metrics handler
 func MetricsHandler() http.Handler {
-	fmt.Println("Handling metrics request")
 	return promhttp.Handler()
 }

@@ -23,14 +23,6 @@ import (
 	Utils "github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
-func init() {
-	loadDotEnv()
-	DB.InitDB()
-	OAuthService.InitOAuthProviders()
-	KafkaService.InitKafka()
-	Metrics.InitPrometheus()
-}
-
 var (
 	logger    = Logger.GetLogger("main.go")
 	BuildTime string
@@ -38,6 +30,14 @@ var (
 	BuildHost string
 	BuildEnv  string
 )
+
+func init() {
+	loadDotEnv()
+	DB.InitDB()
+	OAuthService.InitOAuthProviders()
+	KafkaService.InitKafka()
+	Metrics.InitPrometheus()
+}
 
 func main() {
 	// Set up a context to manage the server's shutdown

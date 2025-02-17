@@ -17,7 +17,7 @@ type Logger struct {
 }
 
 func init() {
-	loggerConfig = ReadConfig("logger.conf")
+	loggerConfig = ReadConfig()
 
 	if loggerConfig.Enabled {
 		initLogger(&loggerConfig)
