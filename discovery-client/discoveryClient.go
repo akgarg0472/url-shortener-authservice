@@ -3,7 +3,6 @@ package discoveryclient
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
@@ -60,7 +59,7 @@ func registerService(isReRegister bool) {
 		Address: hostIp,
 		Check: &api.AgentServiceCheck{
 			TTL:                            "30s",
-			DeregisterCriticalServiceAfter: "30s",
+			DeregisterCriticalServiceAfter: "1m",
 		},
 	}
 
@@ -127,8 +126,10 @@ func sendHeartbeat() {
 	if err != nil {
 		logger.Error("Failed to send heartbeat for {}: {}", serviceID, err.Error())
 
-		if strings.Contains(err.Error(), "404") && (strings.Contains(err.Error(), "Unknown check ID") || strings.Contains(err.Error(), "Unknown service ID")) {
-			registerService(true)
+		if statusErr, ok := err.(api.StatusError); ok {
+			if statusErr.Code == 404 {
+				registerService(true)
+			}
 		}
 	} else {
 		logger.Trace("Heartbeat updated for {}: {}", serviceName, serviceID)
