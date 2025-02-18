@@ -3,6 +3,7 @@ package discoveryclient
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
@@ -16,6 +17,8 @@ var (
 	consulClient *api.Client
 	serviceID    string
 	serviceName  = "urlshortener-auth-service"
+	hostIp       string
+	instancePort int
 )
 
 func InitDiscoveryClient(port int) {
@@ -34,21 +37,27 @@ func InitDiscoveryClient(port int) {
 		logger.Fatal("Failed to create Consul client: %v", err)
 	}
 
-	host := utils.GetHostIP()
+	hostIp = utils.GetHostIP()
+	instancePort = port
+
 	serviceID = fmt.Sprintf("%s-%s", serviceName, uuid.New().String())
 
-	registerService(port, host)
+	registerService(false)
 	initHeartbeat()
 }
 
-func registerService(port int, host string) {
-	logger.Info("Registering service with Consul: {}:{}", serviceName, serviceID)
+func registerService(isReRegister bool) {
+	if isReRegister {
+		logger.Info("Re-Registering service with Consul: {}:{}", serviceName, serviceID)
+	} else {
+		logger.Info("Registering service with Consul: {}:{}", serviceName, serviceID)
+	}
 
 	registration := &api.AgentServiceRegistration{
 		ID:      serviceID,
 		Name:    serviceName,
-		Port:    port,
-		Address: host,
+		Port:    instancePort,
+		Address: hostIp,
 		Check: &api.AgentServiceCheck{
 			TTL:                            "30s",
 			DeregisterCriticalServiceAfter: "30s",
@@ -116,7 +125,11 @@ func sendHeartbeat() {
 	err := consulClient.Agent().UpdateTTL(checkID, "heartbeat passed", api.HealthPassing)
 
 	if err != nil {
-		logger.Error("Failed to update TTL check for {}: {}", serviceID, err.Error())
+		logger.Error("Failed to send heartbeat for {}: {}", serviceID, err.Error())
+
+		if strings.Contains(err.Error(), "404") && (strings.Contains(err.Error(), "Unknown check ID") || strings.Contains(err.Error(), "Unknown service ID")) {
+			registerService(true)
+		}
 	} else {
 		logger.Trace("Heartbeat updated for {}: {}", serviceName, serviceID)
 	}
