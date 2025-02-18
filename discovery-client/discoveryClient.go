@@ -103,10 +103,10 @@ func UnregisterInstance() error {
 
 func initHeartbeat() {
 	go func() {
-		duration, err := strconv.ParseInt(utils.GetEnvVariable("DISCOVERY_CLIENT_HEARTBEAT_FREQUENCY_DURATION", "30"), 10, 64)
+		duration, err := strconv.ParseInt(utils.GetEnvVariable("DISCOVERY_CLIENT_HEARTBEAT_FREQUENCY_DURATION", "15"), 10, 64)
 
-		if err != nil || duration < 30 {
-			duration = 30
+		if err != nil || duration < 15 {
+			duration = 15
 		}
 
 		heartbeatFrequency := time.Duration(duration * int64(time.Second))
