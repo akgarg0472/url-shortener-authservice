@@ -7,6 +7,7 @@ import (
 
 	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
+	"github.com/google/uuid"
 	"github.com/hashicorp/consul/api"
 )
 
@@ -34,10 +35,10 @@ func InitDiscoveryClient(port int) {
 	}
 
 	host := utils.GetHostIP()
-	serviceID = fmt.Sprintf("%s-%d", serviceName, port)
+	serviceID = fmt.Sprintf("%s-%s", serviceName, uuid.New().String())
 
 	registerService(port, host)
-	initHeartbeat(port, host)
+	initHeartbeat()
 }
 
 func registerService(port int, host string) {
@@ -48,6 +49,10 @@ func registerService(port int, host string) {
 		Name:    serviceName,
 		Port:    port,
 		Address: host,
+		Check: &api.AgentServiceCheck{
+			TTL:                            "30s",
+			DeregisterCriticalServiceAfter: "30s",
+		},
 	}
 
 	retryDelay := utils.GetEnvDurationSeconds("REGISTER_RETRY_DELAY_SECONDS", 5*time.Second)
@@ -88,44 +93,31 @@ func UnregisterInstance() error {
 	return nil
 }
 
-func initHeartbeat(port int, host string) {
+func initHeartbeat() {
 	go func() {
 		duration, err := strconv.ParseInt(utils.GetEnvVariable("DISCOVERY_CLIENT_HEARTBEAT_FREQUENCY_DURATION", "30"), 10, 64)
+
 		if err != nil || duration < 30 {
 			duration = 30
 		}
 
 		heartbeatFrequency := time.Duration(duration * int64(time.Second))
-		time.Sleep(heartbeatFrequency)
 
 		for {
-			sendHeartbeat(port, host)
+			sendHeartbeat()
 			time.Sleep(heartbeatFrequency)
 		}
 	}()
 }
 
-func sendHeartbeat(port int, host string) {
-	logger.Debug("Sending heartbeat -> {}, {}", serviceName, serviceID)
+func sendHeartbeat() {
+	checkID := "service:" + serviceID
 
-	services, _, err := consulClient.Health().Service(serviceName, "", true, nil)
+	err := consulClient.Agent().UpdateTTL(checkID, "heartbeat passed", api.HealthPassing)
+
 	if err != nil {
-		logger.Error("Failed to fetch service status from Consul: {}", err.Error())
-		return
-	}
-
-	isRegistered := false
-	for _, service := range services {
-		if service.Service.ID == serviceID {
-			isRegistered = true
-			break
-		}
-	}
-
-	if !isRegistered {
-		logger.Debug("Service not found in Consul, re-registering...")
-		registerService(port, host)
+		logger.Error("Failed to update TTL check for {}: {}", serviceID, err.Error())
 	} else {
-		logger.Trace("Service heartbeat successful -> {}, {}", serviceName, serviceID)
+		logger.Trace("Heartbeat updated for {}: {}", serviceName, serviceID)
 	}
 }
