@@ -1,7 +1,7 @@
 # URL Shortener Authentication Service
 
 ![Java Version](https://img.shields.io/badge/golang-1.21-blue)
-![version](https://img.shields.io/badge/version-1.7.1-blue)
+![version](https://img.shields.io/badge/version-1.7.2-blue)
 
 This project is a URL Shortener Authentication Service written in Go. It handles authentication, user management, token-based security (JWT), and integrates with other services like Kafka for email notifications and Consul for service discovery. This service is part of a larger URL shortener platform.
 
@@ -107,10 +107,18 @@ cd url-shortener-authservice
 Create a `.env` file in the root directory of the project, and set the necessary environment variables as described above. Example `.env`:
 
 ```bash
-LOGGER_LEVEL=INFO
-LOGGER_TYPE=console
-LOGGER_ENABLED=true
-LOGGER_LOG_FILE_PATH=/tmp/logs.log
+LOGGING_CONSOLE_ENABLED=true
+LOGGING_FILE_ENABLED=false
+LOGGING_STREAM_ENABLED=false
+
+# File Logging Settings
+LOGGING_FILE_BASE_PATH=/tmp
+LOG_LEVEL=INFO
+
+# Stream Logging Settings
+LOGGING_STREAM_HOST=localhost
+LOGGING_STREAM_PORT=5000
+LOGGING_STREAM_PROTOCOL=TCP
 
 ENABLE_DISCOVERY_CLIENT=true
 DISCOVERY_SERVER_IP=http://localhost:8500
