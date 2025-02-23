@@ -30,7 +30,7 @@ var (
 )
 
 func init() {
-	log.Info("Initializing Prometheus metrics collector...")
+	log.Info("Initializing Prometheus metrics collector")
 	prometheus.MustRegister(HttpRequestsTotal)
 	prometheus.MustRegister(HttpRequestDuration)
 }

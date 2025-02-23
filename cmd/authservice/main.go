@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -52,24 +52,34 @@ func main() {
 		panic(fmt.Sprintf("Invalid port value defined in environment: %s", portEnv))
 	}
 
-	discovery.InitDiscoveryClient(port)
+	addr := fmt.Sprintf(":%d", port)
+	listener, err := net.Listen("tcp", addr)
+
+	if err != nil {
+		logger.Error("Error creating TCP listener", zap.Error(err))
+		return
+	}
+
+	actualPort, err := extractActualServerPort(listener.Addr().String())
+
+	if err != nil {
+		logger.Error("Error resolving host and port", zap.Error(err))
+		return
+	}
+
+	logger.AddPortToLogger(actualPort)
 
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
 		Handler: loadRoutersV1(),
 	}
 
-	go func() {
-		logger.Sugar().Infof("Starting server on port: %d", port)
+	discovery.InitDiscoveryClient(actualPort)
 
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			if logger.IsErrorEnabled() {
-				logger.Error("Error starting server", zap.Error(err))
-			}
-		} else {
-			if logger.IsInfoEnabled() {
-				logger.Info("Server started on port", zap.Int("port", port))
-			}
+	go func() {
+		err := server.Serve(listener)
+
+		if err != nil {
+			logger.Error("Error starting server", zap.Error(err))
 		}
 	}()
 
@@ -133,4 +143,12 @@ func cleanupResources(server *http.Server) {
 			}
 		}
 	}
+}
+
+func extractActualServerPort(addr string) (int, error) {
+	_, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(portStr)
 }

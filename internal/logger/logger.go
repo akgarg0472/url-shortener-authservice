@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/akgarg0472/urlshortener-auth-service/constants"
+	"github.com/akgarg0472/urlshortener-auth-service/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -139,6 +140,7 @@ func createRootLogger() (*zap.Logger, error) {
 	rootLogger = zap.New(combinedCore, zap.AddCaller(), zap.AddCallerSkip(1)).
 		With(
 			zap.String(constants.ServiceNameLogKey, constants.ServiceName),
+			zap.String(constants.ServiceHostLogKey, utils.GetHostIP()),
 		)
 	return rootLogger, nil
 }
@@ -248,4 +250,10 @@ func IsFatalEnabled() bool {
 // Sugar returns a sugared logger for formatted logging.
 func Sugar() *zap.SugaredLogger {
 	return rootLogger.Sugar()
+}
+
+func AddPortToLogger(port int) {
+	rootLogger = rootLogger.With(
+		zap.Int(constants.ServicePortLogKey, port),
+	)
 }
