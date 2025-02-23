@@ -3,12 +3,15 @@ package handler
 import (
 	"net/http"
 
-	AuthModels "github.com/akgarg0472/urlshortener-auth-service/model"
-	utils "github.com/akgarg0472/urlshortener-auth-service/utils"
+	"github.com/akgarg0472/urlshortener-auth-service/constants"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
+	"github.com/akgarg0472/urlshortener-auth-service/model"
+	"github.com/akgarg0472/urlshortener-auth-service/utils"
+	"go.uber.org/zap"
 )
 
 // Function to send response back to client
-func sendResponseToClient(responseWriter http.ResponseWriter, requestId string, response interface{}, err *AuthModels.ErrorResponse, statusCode int) {
+func sendResponseToClient(responseWriter http.ResponseWriter, requestId string, response interface{}, err *model.ErrorResponse, statusCode int) {
 	if err != nil {
 		errorJson, _ := utils.ConvertToJsonString(err)
 		sendResponseToClientWithStatusAndMessage(responseWriter, int(err.ErrorCode), errorJson)
@@ -18,9 +21,14 @@ func sendResponseToClient(responseWriter http.ResponseWriter, requestId string, 
 	jsonResponse, jsonConvertError := utils.ConvertToJsonString(response)
 
 	if jsonConvertError != nil {
-		authLogger.Error("[{}]: Error Converting Response to JSON: {}", requestId, jsonConvertError.Error())
+		if logger.IsErrorEnabled() {
+			logger.Error("Error Converting Response to JSON",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(jsonConvertError),
+			)
+		}
 
-		errorResponse := &AuthModels.ErrorResponse{
+		errorResponse := &model.ErrorResponse{
 			Message:   "Internal Server Error",
 			ErrorCode: 500,
 		}

@@ -3,14 +3,15 @@ package kafka_service
 import (
 	"context"
 
+	"github.com/akgarg0472/urlshortener-auth-service/constants"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/model"
-	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
 	"github.com/segmentio/kafka-go"
+	"go.uber.org/zap"
 )
 
 var (
-	logger                    = Logger.GetLogger("kafkaService.go")
 	instance                  *KafkaService
 	emailKafkaWriter          *kafka.Writer
 	userRegisteredKafkaWriter *kafka.Writer
@@ -48,20 +49,39 @@ func InitKafka() {
 	emailKafkaTopic := getEmailTopic()
 	userRegisteredKafkaTopic := getUserRegisteredTopic()
 
-	logger.Info("Initializing Kafka with url: {} and topic(s): {}", kafkaURL, []string{emailKafkaTopic, userRegisteredKafkaTopic})
+	if logger.IsInfoEnabled() {
+		logger.Info("Initializing Kafka with url and topic(s)",
+			zap.String("kafka_url", kafkaURL),
+			zap.Strings("topics", []string{emailKafkaTopic, userRegisteredKafkaTopic}),
+		)
+	}
 
 	emailKafkaWriter = getKafkaWriter(kafkaURL, emailKafkaTopic)
 	userRegisteredKafkaWriter = getKafkaWriter(kafkaURL, userRegisteredKafkaTopic)
 
-	logger.Info("Kafka initialized (email): clusterIP={}, topic={}", emailKafkaWriter.Addr, emailKafkaWriter.Topic)
-	logger.Info("Kafka initialized (userRegistered): clusterIP={}, topic={}", userRegisteredKafkaWriter.Addr, userRegisteredKafkaWriter.Topic)
+	if logger.IsInfoEnabled() {
+		logger.Info("Kafka initialized (email)",
+			zap.Any("clusterIP", emailKafkaWriter.Addr),
+			zap.String("topic", emailKafkaWriter.Topic),
+		)
+	}
+	if logger.IsInfoEnabled() {
+		logger.Info("Kafka initialized (userRegistered)",
+			zap.Any("clusterIP", userRegisteredKafkaWriter.Addr),
+			zap.String("topic", userRegisteredKafkaWriter.Topic),
+		)
+	}
 }
 
 func CloseKafka() error {
 	if emailKafkaWriter != nil {
 		logger.Debug("Closing email kafka connection")
 		kafkaCloseError := emailKafkaWriter.Close()
-		logger.Info("Email Kafka connection close status: {}", kafkaCloseError == nil)
+		if logger.IsInfoEnabled() {
+			logger.Info("Email Kafka connection closed",
+				zap.Bool("status", kafkaCloseError == nil),
+			)
+		}
 		return kafkaCloseError
 	}
 
@@ -89,13 +109,26 @@ func getUserRegisteredTopic() string {
 }
 
 func (kafkaService *KafkaService) PushNotificationEvent(reqId string, event model.NotificationEvent) {
-	logger.Debug("[{}] Pushing Notification Event To Kafka topic [{}]: {}", reqId, emailNotificationTopic, event.String())
+	if logger.IsDebugEnabled() {
+		logger.Debug(
+			"Pushing Notification Event To Kafka",
+			zap.String(constants.RequestIdLogKey, reqId),
+			zap.String("topic", emailNotificationTopic),
+			zap.String("event", event.String()),
+		)
+	}
 
 	if emailKafkaWriter != nil {
 		msgBytes, msgError := utils.ConvertToJsonBytes(event)
 
 		if msgError != nil {
-			logger.Error("[{}] Error converting notification event to bytes: {}", reqId, msgError.Error())
+			if logger.IsErrorEnabled() {
+				logger.Error(
+					"Error converting notification event to bytes",
+					zap.String(constants.RequestIdLogKey, reqId),
+					zap.Error(msgError),
+				)
+			}
 			return
 		}
 
@@ -105,12 +138,25 @@ func (kafkaService *KafkaService) PushNotificationEvent(reqId string, event mode
 
 		msgWriteErr := emailKafkaWriter.WriteMessages(context.Background(), message)
 
-		logger.Debug("[{}] Kafka push result: {}", reqId, msgWriteErr == nil)
+		if logger.IsDebugEnabled() {
+			logger.Debug(
+				"Kafka push result",
+				zap.String(constants.RequestIdLogKey, reqId),
+				zap.Bool("success", msgWriteErr == nil),
+			)
+		}
 	}
 }
 
 func (kafkaService *KafkaService) PushUserRegisteredEvent(reqId string, userId string) {
-	logger.Debug("[{}] Pushing user Registered Event To Kafka topic [{}]: {}", reqId, userRegisteredTopic, userId)
+	if logger.IsDebugEnabled() {
+		logger.Debug(
+			"Pushing user Registered Event To Kafka",
+			zap.String(constants.RequestIdLogKey, reqId),
+			zap.String("topic", userRegisteredTopic),
+			zap.String("userId", userId),
+		)
+	}
 
 	if userRegisteredKafkaWriter != nil {
 		event := model.UserRegisteredEvent{
@@ -120,7 +166,13 @@ func (kafkaService *KafkaService) PushUserRegisteredEvent(reqId string, userId s
 		msgBytes, msgError := utils.ConvertToJsonBytes(event)
 
 		if msgError != nil {
-			logger.Error("[{}] Error converting user registered event to bytes: {}", reqId, msgError.Error())
+			if logger.IsErrorEnabled() {
+				logger.Error(
+					"Error converting user registered event to bytes",
+					zap.String(constants.RequestIdLogKey, reqId),
+					zap.String("error", msgError.Error()),
+				)
+			}
 			return
 		}
 
@@ -130,7 +182,12 @@ func (kafkaService *KafkaService) PushUserRegisteredEvent(reqId string, userId s
 
 		msgWriteErr := userRegisteredKafkaWriter.WriteMessages(context.Background(), message)
 
-		logger.Debug("[{}] Kafka push result: {}", reqId, msgWriteErr == nil)
-
+		if logger.IsDebugEnabled() {
+			logger.Debug(
+				"Kafka push result",
+				zap.String(constants.RequestIdLogKey, reqId),
+				zap.Bool("success", msgWriteErr == nil),
+			)
+		}
 	}
 }

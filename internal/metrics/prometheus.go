@@ -5,15 +5,12 @@ import (
 	"strconv"
 	"time"
 
+	log "github.com/akgarg0472/urlshortener-auth-service/internal/logger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 )
 
 var (
-	logger = Logger.GetLogger("prometheus.go")
-
 	HttpRequestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "authservice_http_requests_total",
@@ -32,12 +29,10 @@ var (
 	)
 )
 
-// InitPrometheus registers all custom metrics
-func InitPrometheus() {
-	logger.Info("Initializing Prometheus metrics...")
+func init() {
+	log.Info("Initializing Prometheus metrics collector...")
 	prometheus.MustRegister(HttpRequestsTotal)
 	prometheus.MustRegister(HttpRequestDuration)
-	logger.Info("Prometheus metrics registered")
 }
 
 // PrometheusMiddleware tracks request count and duration

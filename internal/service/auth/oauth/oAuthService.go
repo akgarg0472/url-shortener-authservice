@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/akgarg0472/urlshortener-auth-service/constants"
 	enums "github.com/akgarg0472/urlshortener-auth-service/constants"
 	entity2 "github.com/akgarg0472/urlshortener-auth-service/internal/entity"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
+	"go.uber.org/zap"
 
 	authDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao/auth"
 	oauthDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao/oauth"
@@ -13,14 +16,12 @@ import (
 	notificationService "github.com/akgarg0472/urlshortener-auth-service/internal/service/notification"
 	tokenService "github.com/akgarg0472/urlshortener-auth-service/internal/service/token"
 	"github.com/akgarg0472/urlshortener-auth-service/model"
-	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
 	"github.com/google/uuid"
 )
 
 var (
 	oAuthProvidersMapping map[string]model.OAuthProvider
-	logger                = Logger.GetLogger("oAuthService.go")
 )
 
 type ProfileInfo struct {
@@ -61,7 +62,12 @@ func InitOAuthProviders() {
 		oAuthProvidersMapping[client.Provider] = client
 	}
 
-	logger.Debug("Loaded oAuth providers: {}", oAuthProvidersMapping)
+	if logger.IsDebugEnabled() {
+		logger.Debug(
+			"Loaded OAuth providers",
+			zap.Any("oAuthProviders", oAuthProvidersMapping),
+		)
+	}
 }
 
 func GetOAuthProvider(query string) []model.OAuthProvider {
@@ -90,12 +96,25 @@ func ProcessCallbackRequest(
 	requestId string,
 	oAuthCallbackRequest model.OAuthCallbackRequest,
 ) (*model.OAuthCallbackResponse, *model.ErrorResponse) {
-	logger.Info("[{}] oAuth callback request received: {}", requestId, oAuthCallbackRequest)
+	if logger.IsInfoEnabled() {
+		logger.Info(
+			"OAuth callback request received",
+			zap.String(constants.RequestIdLogKey, requestId),
+		)
+	}
+
 	var newUser bool
 	profileInfo, err := getProfileInfo(requestId, oAuthCallbackRequest)
 
 	if err != nil {
-		logger.Error("[{}] error fetching oAuth profile details: {}", requestId, err)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Error fetching OAuth profile details",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Int16(constants.ErrorCodeLogKey, err.ErrorCode),
+				zap.Any(constants.ErrorMessageLogKey, err.Message),
+			)
+		}
 		return nil, err
 	}
 
@@ -103,15 +122,32 @@ func ProcessCallbackRequest(
 	user, err := getExistingUser(requestId, *profileInfo)
 
 	if user != nil {
-		logger.Info("[{}] user is already registered", requestId)
+		if logger.IsInfoEnabled() {
+			logger.Info(
+				"User is already registered",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
 		newUser = false
 	} else if err.ErrorCode == 404 {
-		logger.Info("[{}] user is not registered, going to register it", requestId)
+		if logger.IsInfoEnabled() {
+			logger.Info(
+				"User is not registered, going to register it",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
 		newUser = true
 		registeredUser, err := registerUser(requestId, *profileInfo)
 
 		if err != nil {
-			logger.Error("[{}] failed to register OAuth user: {}", requestId, err)
+			if logger.IsErrorEnabled() {
+				logger.Error(
+					"Failed to register OAuth user",
+					zap.String(constants.RequestIdLogKey, requestId),
+					zap.Int16(constants.ErrorCodeLogKey, err.ErrorCode),
+					zap.Any(constants.ErrorMessageLogKey, err.Message),
+				)
+			}
 			return nil, err
 		}
 
@@ -125,17 +161,37 @@ func ProcessCallbackRequest(
 		kafka_service.GetInstance().PushUserRegisteredEvent(requestId, user.Id)
 
 	} else if err != nil && err.ErrorCode == 409 {
-		logger.Error("[{}] user already exists for oauthId/email: {}, {}", requestId, profileInfo.OAuthId, profileInfo.Email)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"User already exists for oauthId/email",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.String("OAuthId", profileInfo.OAuthId),
+				zap.String("Email", profileInfo.Email),
+			)
+		}
 		return nil, err
 	} else {
-		logger.Error("[{}] error fetching user: {}", requestId, profileInfo.OAuthId)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Error fetching user",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.String("OAuthId", profileInfo.OAuthId),
+			)
+		}
 		return nil, err
 	}
 
 	jwtToken, jwtError := tokenService.GetInstance().GenerateJwtToken(requestId, *user)
 
 	if jwtError != nil {
-		logger.Error("[{}]: Error generating auth token -> {}", requestId, jwtError)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Error generating auth token",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Int16(constants.ErrorCodeLogKey, jwtError.ErrorCode),
+				zap.Any(constants.ErrorMessageLogKey, jwtError.Message),
+			)
+		}
 		return nil, jwtError
 	}
 
@@ -205,14 +261,14 @@ func createUserEntity(profileInfo ProfileInfo) *entity2.User {
 	}
 }
 
-func getProfileInfo(reqId string, request model.OAuthCallbackRequest) (*ProfileInfo, *model.ErrorResponse) {
+func getProfileInfo(requestId string, request model.OAuthCallbackRequest) (*ProfileInfo, *model.ErrorResponse) {
 	oAuthProvider := request.Provider
 
 	var profileInfo ProfileInfo
 
 	switch oAuthProvider {
 	case enums.OauthProviderGithub:
-		pInfo, err := FetchGitHubProfileInfo(reqId, request)
+		pInfo, err := FetchGitHubProfileInfo(requestId, request)
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +276,7 @@ func getProfileInfo(reqId string, request model.OAuthCallbackRequest) (*ProfileI
 		profileInfo.OAuthProvider = string(enums.OauthProviderGithub)
 
 	case enums.OauthProviderGoogle:
-		pInfo, err := FetchGoogleProfileInfo(reqId, request)
+		pInfo, err := FetchGoogleProfileInfo(requestId, request)
 		if err != nil {
 			return nil, err
 		}
@@ -228,7 +284,13 @@ func getProfileInfo(reqId string, request model.OAuthCallbackRequest) (*ProfileI
 		profileInfo.OAuthProvider = string(enums.OauthProviderGoogle)
 	}
 
-	logger.Debug("[{}] profile info fetched is: {}", reqId, profileInfo)
+	if logger.IsDebugEnabled() {
+		logger.Debug(
+			"Profile info fetched",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Any("profileInfo", profileInfo),
+		)
+	}
 
 	return &profileInfo, nil
 }

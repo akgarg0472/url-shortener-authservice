@@ -1,25 +1,27 @@
 package notification_service
 
 import (
-	enums "github.com/akgarg0472/urlshortener-auth-service/constants"
-	kafkaService "github.com/akgarg0472/urlshortener-auth-service/internal/service/kafka"
+	"github.com/akgarg0472/urlshortener-auth-service/constants"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
+	kafka_service "github.com/akgarg0472/urlshortener-auth-service/internal/service/kafka"
 	"github.com/akgarg0472/urlshortener-auth-service/model"
-	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
-)
-
-var (
-	logger = Logger.GetLogger("notificationService.go")
+	"go.uber.org/zap"
 )
 
 func SendSignupSuccessEmail(requestId string, email string, name string) {
-	logger.Info("[{}] Pushing signup success email to {}", requestId, email)
+	if logger.IsInfoEnabled() {
+		logger.Info("Pushing signup success email",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("email", email),
+		)
+	}
 
 	body := utils.GetSignupSuccessEmailBody(name)
 	recipients := [1]string{email}
-	event := generateNotificationEvent(recipients[:], "Welcome Aboard! Start Enjoying Link Shortening Bliss 🚀🎉", body, true, enums.NotificationTypeEmail)
+	event := generateNotificationEvent(recipients[:], "Welcome Aboard! Start Enjoying Link Shortening Bliss 🚀🎉", body, true, constants.NotificationTypeEmail)
 
-	kafkaService.GetInstance().PushNotificationEvent(requestId, *event)
+	kafka_service.GetInstance().PushNotificationEvent(requestId, *event)
 }
 
 func SendForgotPasswordEmail(
@@ -28,23 +30,33 @@ func SendForgotPasswordEmail(
 	name string,
 	forgotPasswordUrl string,
 ) {
-	logger.Info("[{}] Sending forgot password email to {}", requestId, email)
+	if logger.IsInfoEnabled() {
+		logger.Info("Pushing forgot password email",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("email", email),
+		)
+	}
 
 	body := utils.GenerateForgotPasswordEmailBody(email, name, forgotPasswordUrl)
 	recipients := [1]string{email}
-	event := generateNotificationEvent(recipients[:], "Reset your UrlShortener password", body, true, enums.NotificationTypeEmail)
+	event := generateNotificationEvent(recipients[:], "Reset your UrlShortener password", body, true, constants.NotificationTypeEmail)
 
-	kafkaService.GetInstance().PushNotificationEvent(requestId, *event)
+	kafka_service.GetInstance().PushNotificationEvent(requestId, *event)
 }
 
 func SendPasswordChangeSuccessEmail(requestId string, email string) {
-	logger.Info("[{}] Sending password changed success email to {}", requestId, email)
+	if logger.IsInfoEnabled() {
+		logger.Info("Pushing password changed success email",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("email", email),
+		)
+	}
 
 	body := utils.GeneratePasswordChangeSuccessEmailBody(email)
 	recipients := [1]string{email}
-	event := generateNotificationEvent(recipients[:], "Password changed successfully 🎉", body, true, enums.NotificationTypeEmail)
+	event := generateNotificationEvent(recipients[:], "Password changed successfully 🎉", body, true, constants.NotificationTypeEmail)
 
-	kafkaService.GetInstance().PushNotificationEvent(requestId, *event)
+	kafka_service.GetInstance().PushNotificationEvent(requestId, *event)
 }
 
 func generateNotificationEvent(
@@ -52,7 +64,7 @@ func generateNotificationEvent(
 	subject string,
 	body string,
 	html bool,
-	notificationType enums.NotificationType,
+	notificationType constants.NotificationType,
 ) *model.NotificationEvent {
 	return &model.NotificationEvent{
 		Recipients:       recipients,

@@ -5,17 +5,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/akgarg0472/urlshortener-auth-service/constants"
 	"github.com/akgarg0472/urlshortener-auth-service/internal/entity"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
+	"go.uber.org/zap"
 
 	MySQL "github.com/akgarg0472/urlshortener-auth-service/database"
 	Models "github.com/akgarg0472/urlshortener-auth-service/model"
-	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
 	"gorm.io/gorm"
-)
-
-var (
-	logger = Logger.GetLogger("authDao.go")
 )
 
 type TimestampType string
@@ -25,11 +23,20 @@ const (
 )
 
 func logErrorGettingDBInstance(requestId string) {
-	logger.Error("[{}]: Error getting DB instance", requestId)
+	if logger.IsErrorEnabled() {
+		logger.Error("Error getting DB instance",
+			zap.String(constants.RequestIdLogKey, requestId),
+		)
+	}
 }
 
 func GetUserByEmail(requestId string, identity string) (*Models.User, *Models.ErrorResponse) {
-	logger.Info("[{}]: Getting user by email -> {}", requestId, identity)
+	if logger.IsInfoEnabled() {
+		logger.Info("Getting user by email",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("email", identity),
+		)
+	}
 
 	db := MySQL.GetInstance(requestId, "GetUserByEmail")
 
@@ -44,12 +51,21 @@ func GetUserByEmail(requestId string, identity string) (*Models.User, *Models.Er
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			logger.Info("[{}]: No user found with email: {}", requestId, identity)
+			if logger.IsInfoEnabled() {
+				logger.Info("No user found with email",
+					zap.String(constants.RequestIdLogKey, requestId),
+					zap.String("email", identity),
+				)
+			}
 			return nil, utils.GetErrorResponse("email not registered", 404)
 		} else {
-			logger.Error("[{}]: Error querying user=: {}", requestId, result.Error)
+			if logger.IsErrorEnabled() {
+				logger.Error("Error querying user",
+					zap.String(constants.RequestIdLogKey, requestId),
+					zap.Error(result.Error),
+				)
+			}
 		}
-
 		return nil, utils.InternalServerErrorResponse()
 	}
 
@@ -68,13 +84,23 @@ func GetUserByEmail(requestId string, identity string) (*Models.User, *Models.Er
 		OAuthProvider:       utils.GetStringOrNil(dbUser.OAuthProvider),
 	}
 
-	logger.Debug("[{}] Fetched user: {}", requestId, user)
+	if logger.IsDebugEnabled() {
+		logger.Debug("Fetched user",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Any("user", user),
+		)
+	}
 
 	return &user, nil
 }
 
 func GetUserById(requestId string, identity string) (*Models.User, *Models.ErrorResponse) {
-	logger.Info("[{}]: Getting user by id -> {}", requestId, identity)
+	if logger.IsInfoEnabled() {
+		logger.Info("Getting user by id",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("user_id", identity),
+		)
+	}
 
 	db := MySQL.GetInstance(requestId, "GetUserById")
 
@@ -89,10 +115,20 @@ func GetUserById(requestId string, identity string) (*Models.User, *Models.Error
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			logger.Info("[{}]: No user found with id: {}", requestId, identity)
+			if logger.IsInfoEnabled() {
+				logger.Info("No user found with id",
+					zap.String(constants.RequestIdLogKey, requestId),
+					zap.String("user_id", identity),
+				)
+			}
 			return nil, utils.GetErrorResponse("User not found with id", 404)
 		} else {
-			logger.Error("[{}]: Error querying user=: {}", requestId, result.Error)
+			if logger.IsErrorEnabled() {
+				logger.Error("Error querying user",
+					zap.String(constants.RequestIdLogKey, requestId),
+					zap.Error(result.Error),
+				)
+			}
 		}
 
 		return nil, utils.InternalServerErrorResponse()
@@ -113,13 +149,23 @@ func GetUserById(requestId string, identity string) (*Models.User, *Models.Error
 		OAuthProvider:       utils.GetStringOrNil(dbUser.OAuthProvider),
 	}
 
-	logger.Debug("[{}] Fetched user: {}", requestId, user)
+	if logger.IsDebugEnabled() {
+		logger.Debug("Fetched user",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Any("user", user),
+		)
+	}
 
 	return &user, nil
 }
 
 func GetUserByOAuthId(requestId string, oAuthId string) (*Models.User, *Models.ErrorResponse) {
-	logger.Info("[{}]: Getting user by oAuthId -> {}", requestId, oAuthId)
+	if logger.IsInfoEnabled() {
+		logger.Info("Getting user by oAuthId",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("oAuthId", oAuthId),
+		)
+	}
 
 	db := MySQL.GetInstance(requestId, "GetUserByOAuthId")
 
@@ -134,10 +180,20 @@ func GetUserByOAuthId(requestId string, oAuthId string) (*Models.User, *Models.E
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			logger.Error("[{}]: No user found with oAuthId: {}", requestId, oAuthId)
+			if logger.IsErrorEnabled() {
+				logger.Error("No user found with oAuthId",
+					zap.String(constants.RequestIdLogKey, requestId),
+					zap.String("oAuthId", oAuthId),
+				)
+			}
 			return nil, utils.GetErrorResponse(fmt.Sprintf("No user found by oAuthId: %s", oAuthId), 404)
 		} else {
-			logger.Error("[{}]: Error querying user=: {}", requestId, result.Error)
+			if logger.IsErrorEnabled() {
+				logger.Error("Error querying user",
+					zap.String(constants.RequestIdLogKey, requestId),
+					zap.Error(result.Error),
+				)
+			}
 		}
 
 		return nil, utils.InternalServerErrorResponse()
@@ -158,13 +214,23 @@ func GetUserByOAuthId(requestId string, oAuthId string) (*Models.User, *Models.E
 		LoginType:           dbUser.UserLoginType,
 	}
 
-	logger.Info("[{}] Fetched user: {}", requestId, user)
+	if logger.IsDebugEnabled() {
+		logger.Debug("Fetched user",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Any("user", user),
+		)
+	}
 
 	return &user, nil
 }
 
 func CheckIfUserExistsByEmail(requestId string, email string) (bool, *Models.ErrorResponse) {
-	logger.Info("[{}]: Checking if user exists by email: {}", requestId, email)
+	if logger.IsInfoEnabled() {
+		logger.Info("Checking if user exists by email",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("email", email),
+		)
+	}
 
 	db := MySQL.GetInstance(requestId, "CheckIfUserExistsByEmail")
 
@@ -177,16 +243,33 @@ func CheckIfUserExistsByEmail(requestId string, email string) (bool, *Models.Err
 	result := db.Model(&entity.User{}).Where("email = ?", email).Count(&count)
 
 	if result.Error != nil {
-		logger.Error("[{}] error checking for user existence by email", requestId, result.Error)
+		if logger.IsErrorEnabled() {
+			logger.Error("Error checking for user existence by email",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(result.Error),
+			)
+		}
 		return false, utils.InternalServerErrorResponse()
 	}
 
-	logger.Info("[{}]: CheckIfUserExistsByEmail Count Query Result: {}", requestId, count)
+	if logger.IsInfoEnabled() {
+		logger.Info("CheckIfUserExistsByEmail Count Query Result",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Int64("count", count),
+		)
+	}
+
 	return count == 1, nil
 }
 
 func SaveUser(requestId string, user *entity.User) (*entity.User, *Models.ErrorResponse) {
-	logger.Info("[{}]: Saving user into DB with id: {} and email: {}", requestId, user.Id, utils.GetStringOrNil(user.Email))
+	if logger.IsInfoEnabled() {
+		logger.Info("Saving user into DB",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("user_id", user.Id),
+			zap.String("email", utils.GetStringOrNil(user.Email)),
+		)
+	}
 
 	db := MySQL.GetInstance(requestId, "SaveUser")
 
@@ -201,17 +284,31 @@ func SaveUser(requestId string, user *entity.User) (*entity.User, *Models.ErrorR
 	result := db.Create(user)
 
 	if result.Error != nil {
-		logger.Error("[{}]: Error saving user: {}", requestId, result.Error)
+		if logger.IsErrorEnabled() {
+			logger.Error("Error saving user",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(result.Error),
+			)
+		}
 		return nil, utils.InternalServerErrorResponse()
 	}
 
-	logger.Info("[{}] user created successfully", requestId)
+	if logger.IsInfoEnabled() {
+		logger.Info("User created successfully",
+			zap.String(constants.RequestIdLogKey, requestId),
+		)
+	}
 
 	return user, nil
 }
 
 func UpdateForgotPasswordToken(requestId string, identity string, token string) (bool, *Models.ErrorResponse) {
-	logger.Info("[{}]: Updating forgot password token: {}", requestId, identity)
+	if logger.IsInfoEnabled() {
+		logger.Info("Updating forgot password token",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("identity", identity),
+		)
+	}
 
 	db := MySQL.GetInstance(requestId, "UpdateForgotPasswordToken")
 
@@ -231,12 +328,21 @@ func UpdateForgotPasswordToken(requestId string, identity string, token string) 
 	).Count(&affectedRows)
 
 	if result.Error != nil {
-		logger.Error("[{}]: Error updating forgot password token: {}", requestId, result.Error)
+		if logger.IsErrorEnabled() {
+			logger.Error("Error updating forgot password token",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(result.Error),
+			)
+		}
 		return false, utils.InternalServerErrorResponse()
 	}
 
 	if affectedRows == 1 {
-		logger.Info("[{}]: Forgot password token updated", requestId)
+		if logger.IsInfoEnabled() {
+			logger.Info("Forgot password token updated",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
 		return true, nil
 	}
 
@@ -244,7 +350,11 @@ func UpdateForgotPasswordToken(requestId string, identity string, token string) 
 }
 
 func GetForgotPasswordToken(requestId string, email string) (string, *Models.ErrorResponse) {
-	logger.Info("[{}]: Fetching user forgot token info from DB", requestId)
+	if logger.IsInfoEnabled() {
+		logger.Info("Fetching user forgot token info from DB",
+			zap.String(constants.RequestIdLogKey, requestId),
+		)
+	}
 
 	user, err := GetUserByEmail(requestId, email)
 
@@ -253,15 +363,23 @@ func GetForgotPasswordToken(requestId string, email string) (string, *Models.Err
 	}
 
 	if user.ForgotPasswordToken == "" {
-		logger.Error("[{}] invalid forgot password token fetched from DB", requestId)
-		return "", utils.GetErrorResponse("Invalid Forgot Password Token. Request Rejected", 400)
+		if logger.IsErrorEnabled() {
+			logger.Error("Invalid forgot password token fetched from DB",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
+		return "", utils.GetErrorResponse("Invalid Forgot Password Token", 400)
 	}
 
 	return user.ForgotPasswordToken, nil
 }
 
 func UpdatePassword(requestId string, identity string, newPassword string) (bool, *Models.ErrorResponse) {
-	logger.Info("[{}]: Updating user password into DB", requestId)
+	if logger.IsInfoEnabled() {
+		logger.Info("Updating user password into DB",
+			zap.String(constants.RequestIdLogKey, requestId),
+		)
+	}
 
 	db := MySQL.GetInstance(requestId, "UpdatePassword")
 
@@ -281,12 +399,22 @@ func UpdatePassword(requestId string, identity string, newPassword string) (bool
 	}).Count(&affectedRows)
 
 	if result.Error != nil {
-		logger.Error("[{}]: Error updating password: {}", requestId, result.Error)
+		if logger.IsErrorEnabled() {
+			logger.Error("Error updating password",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(result.Error),
+			)
+		}
 		return false, utils.InternalServerErrorResponse()
 	}
 
 	if affectedRows == 1 {
-		logger.Info("[{}]: Password updated successfully", requestId)
+		if logger.IsInfoEnabled() {
+			logger.Info(
+				"Password updated successfully",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
 		return true, nil
 	}
 
@@ -296,7 +424,14 @@ func UpdatePassword(requestId string, identity string, newPassword string) (bool
 func UpdateTimestamp(requestId string, identity string, timestampType TimestampType) {
 	timestamp := time.Now().UnixMilli()
 
-	logger.Debug("[{}]: Updating {} into DB: {}", requestId, timestampType, timestamp)
+	if logger.IsDebugEnabled() {
+		logger.Debug(
+			"Updating timestamp into DB",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Any("timestampType", timestampType),
+			zap.Any("timestamp", timestamp),
+		)
+	}
 
 	db := MySQL.GetInstance(requestId, "UpdateTimestamp")
 
@@ -312,12 +447,25 @@ func UpdateTimestamp(requestId string, identity string, timestampType TimestampT
 	}).Count(&affectedRows)
 
 	if result.Error != nil {
-		logger.Error("[{}]: Error updating {}: {}", requestId, timestampType, result.Error)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Error updating timestamp",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Any("timestampType", timestampType),
+				zap.Error(result.Error),
+			)
+		}
 		return
 	}
 
 	if affectedRows == 1 {
-		logger.Info("[{}] {} updated successfully", requestId, timestampType)
+		if logger.IsInfoEnabled() {
+			logger.Info(
+				"Timestamp updated successfully",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Any("timestampType", timestampType),
+			)
+		}
 		return
 	}
 }

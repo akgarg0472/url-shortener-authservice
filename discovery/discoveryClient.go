@@ -1,21 +1,25 @@
-package discoveryclient
+package discovery
 
 import (
 	"fmt"
 	"strconv"
 	"time"
 
-	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
+	"github.com/akgarg0472/urlshortener-auth-service/constants"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
 	"github.com/google/uuid"
 	"github.com/hashicorp/consul/api"
+	"go.uber.org/zap"
+)
+
+const (
+	serviceIDKey = "service_id"
 )
 
 var (
-	logger       = Logger.GetLogger("discoveryClient.go")
 	consulClient *api.Client
 	serviceID    string
-	serviceName  = "urlshortener-auth-service"
 	hostIp       string
 	instancePort int
 )
@@ -23,7 +27,9 @@ var (
 func InitDiscoveryClient(port int) {
 	isDiscoveryClientEnabled, err := strconv.ParseBool(utils.GetEnvVariable("ENABLE_DISCOVERY_CLIENT", "false"))
 	if err != nil || !isDiscoveryClientEnabled {
-		logger.Info("Discovery client is disabled in configuration")
+		if logger.IsInfoEnabled() {
+			logger.Info("Discovery client is disabled in configuration")
+		}
 		return
 	}
 
@@ -32,29 +38,65 @@ func InitDiscoveryClient(port int) {
 	config := api.DefaultConfig()
 	config.Address = consulAddress
 	consulClient, err = api.NewClient(config)
+
 	if err != nil {
-		logger.Fatal("Failed to create Consul client: %v", err)
+		if logger.IsFatalEnabled() {
+			logger.Fatal("Failed to create Consul client", zap.Error(err))
+		}
 	}
 
 	hostIp = utils.GetHostIP()
 	instancePort = port
 
-	serviceID = fmt.Sprintf("%s-%s", serviceName, uuid.New().String())
+	serviceID = fmt.Sprintf("%s-%s", constants.ServiceName, uuid.New().String())
 
 	registerService(false)
 	initHeartbeat()
 }
 
+func UnregisterInstance() error {
+	if consulClient == nil {
+		return fmt.Errorf("consul client is not initialized")
+	}
+
+	if logger.IsInfoEnabled() {
+		logger.Info("Unregistering service",
+			zap.String(serviceIDKey, serviceID),
+		)
+	}
+
+	err := consulClient.Agent().ServiceDeregister(serviceID)
+
+	if err != nil {
+		if logger.IsErrorEnabled() {
+			logger.Error("Error unregistering service", zap.Error(err))
+		}
+		return err
+	}
+
+	if logger.IsInfoEnabled() {
+		logger.Info("Service successfully unregistered from Consul")
+	}
+
+	return nil
+}
+
 func registerService(isReRegister bool) {
-	if isReRegister {
-		logger.Info("Re-Registering service with Consul: {}:{}", serviceName, serviceID)
-	} else {
-		logger.Info("Registering service with Consul: {}:{}", serviceName, serviceID)
+	if logger.IsInfoEnabled() {
+		if isReRegister {
+			logger.Info("Re-Registering service with Consul",
+				zap.String("service_id", serviceID),
+			)
+		} else {
+			logger.Info("Registering service with Consul",
+				zap.String("service_id", serviceID),
+			)
+		}
 	}
 
 	registration := &api.AgentServiceRegistration{
 		ID:      serviceID,
-		Name:    serviceName,
+		Name:    constants.ServiceName,
 		Port:    instancePort,
 		Address: hostIp,
 		Check: &api.AgentServiceCheck{
@@ -69,36 +111,32 @@ func registerService(isReRegister bool) {
 
 	for {
 		if time.Since(startTime) > maxRetryDuration {
-			logger.Fatal("Failed to register service after %s: %s", maxRetryDuration, serviceName)
+			if logger.IsFatalEnabled() {
+				logger.Fatal("Failed to register service after max retry duration",
+					zap.Duration("duration", maxRetryDuration),
+				)
+			}
 			panic("Error registering service after max retries")
 		}
 
 		err := consulClient.Agent().ServiceRegister(registration)
 		if err != nil {
-			logger.Error("Error registering service (elapsed time: %s): %s", time.Since(startTime), err.Error())
+			if logger.IsErrorEnabled() {
+				logger.Error("Error registering service",
+					zap.Duration("elapsed_time", time.Since(startTime)),
+					zap.Error(err),
+				)
+			}
 			time.Sleep(retryDelay)
 		} else {
-			logger.Info("Service registered successfully -> {}:{}", serviceName, serviceID)
+			if logger.IsInfoEnabled() {
+				logger.Info("Service registered successfully",
+					zap.String(serviceIDKey, serviceID),
+				)
+			}
 			return
 		}
 	}
-}
-
-func UnregisterInstance() error {
-	if consulClient == nil {
-		return fmt.Errorf("onsul client is not initialized")
-	}
-
-	logger.Info("Unregistering service -> {}, {}", serviceName, serviceID)
-
-	err := consulClient.Agent().ServiceDeregister(serviceID)
-	if err != nil {
-		logger.Error("Error unregistering service: {}", err.Error())
-		return err
-	}
-
-	logger.Info("Service successfully unregistered from Consul")
-	return nil
 }
 
 func initHeartbeat() {
@@ -124,7 +162,12 @@ func sendHeartbeat() {
 	err := consulClient.Agent().UpdateTTL(checkID, "heartbeat passed", api.HealthPassing)
 
 	if err != nil {
-		logger.Error("Failed to send heartbeat for {}: {}", serviceID, err.Error())
+		if logger.IsErrorEnabled() {
+			logger.Error("Failed to send heartbeat",
+				zap.String(serviceIDKey, serviceID),
+				zap.Error(err),
+			)
+		}
 
 		if statusErr, ok := err.(api.StatusError); ok {
 			if statusErr.Code == 404 {
@@ -132,6 +175,10 @@ func sendHeartbeat() {
 			}
 		}
 	} else {
-		logger.Trace("Heartbeat updated for {}: {}", serviceName, serviceID)
+		if logger.IsDebugEnabled() {
+			logger.Debug("Heartbeat updated",
+				zap.String(serviceIDKey, serviceID),
+			)
+		}
 	}
 }

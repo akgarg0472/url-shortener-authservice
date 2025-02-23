@@ -5,31 +5,44 @@ import (
 	"net/url"
 	"strings"
 
-	enums "github.com/akgarg0472/urlshortener-auth-service/constants"
+	"github.com/akgarg0472/urlshortener-auth-service/constants"
+	"github.com/akgarg0472/urlshortener-auth-service/model"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	"golang.org/x/crypto/bcrypt"
 
 	authDao "github.com/akgarg0472/urlshortener-auth-service/internal/dao/auth"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/entity"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
 	kafka_service "github.com/akgarg0472/urlshortener-auth-service/internal/service/kafka"
 	notificationService "github.com/akgarg0472/urlshortener-auth-service/internal/service/notification"
 	tokenService "github.com/akgarg0472/urlshortener-auth-service/internal/service/token"
 	authModels "github.com/akgarg0472/urlshortener-auth-service/model"
-	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
-)
-
-var (
-	logger = Logger.GetLogger("authService.go")
 )
 
 // LoginWithEmailPassword Function to handle login request using email & password and generate JWT token
 func LoginWithEmailPassword(requestId string, loginRequest authModels.LoginRequest) (*authModels.LoginResponse, *authModels.ErrorResponse) {
-	logger.Info("[{}]: processing LoginWithEmailPassword Request -> {}", requestId, loginRequest)
+	if logger.IsInfoEnabled() {
+		logger.Info(
+			"Processing LoginWithEmailPassword Request",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Any("loginRequest", loginRequest),
+		)
+	}
 
 	user, err := authDao.GetUserByEmail(requestId, loginRequest.Email)
 
 	if err != nil {
-		logger.Error("[{}]: Error {} getting user by email -> {}", requestId, err.ErrorCode, err.Message)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Error getting user by email",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Any(constants.ErrorCodeLogKey, err.ErrorCode),
+				zap.Any(constants.ErrorMessageLogKey, err.Message),
+			)
+		}
 
 		if err.ErrorCode == 404 {
 			return nil, &authModels.ErrorResponse{
@@ -41,10 +54,21 @@ func LoginWithEmailPassword(requestId string, loginRequest authModels.LoginReque
 		return nil, err
 	}
 
-	logger.Trace("[{}]: User -> {}", requestId, user)
+	if logger.IsDebugEnabled() {
+		logger.Debug(
+			"User details",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Any("user", user),
+		)
+	}
 
-	if user.LoginType != enums.UserEntityLoginTypeEmailAndPassword {
-		logger.Info("[{}] user is not registered using email and password", requestId)
+	if user.LoginType != constants.UserEntityLoginTypeEmailAndPassword {
+		if logger.IsInfoEnabled() {
+			logger.Info(
+				"User is not registered using email and password",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
 		return nil, &authModels.ErrorResponse{
 			Message:   fmt.Sprintf("Your account is registered using %s OAuth and does not have a password. Please log in using %s OAuth.", user.OAuthProvider, user.OAuthProvider),
 			ErrorCode: 400,
@@ -52,14 +76,26 @@ func LoginWithEmailPassword(requestId string, loginRequest authModels.LoginReque
 	}
 
 	if !verifyPassword(loginRequest.Password, user.Password) {
-		logger.Error("[{}] invalid credentials provided", requestId)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Invalid credentials provided",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
 		return nil, &authModels.ErrorResponse{Message: "Invalid credentials", ErrorCode: 401}
 	}
 
 	jwtToken, jwtError := tokenService.GetInstance().GenerateJwtToken(requestId, *user)
 
 	if jwtError != nil {
-		logger.Error("[{}]: Error generating auth token -> {}", requestId, jwtError)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Error generating auth token",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Int16(constants.ErrorCodeLogKey, jwtError.ErrorCode),
+				zap.Any(constants.ErrorMessageLogKey, jwtError.Message),
+			)
+		}
 		return nil, jwtError
 	}
 
@@ -76,41 +112,85 @@ func LoginWithEmailPassword(requestId string, loginRequest authModels.LoginReque
 
 // Signup Function to handle signup request and save user in database
 func Signup(requestId string, signupRequest authModels.SignupRequest) (*authModels.SignupResponse, *authModels.ErrorResponse) {
-	logger.Info("[{}]: Processing Signup Request: {}", requestId, signupRequest)
+	if logger.IsInfoEnabled() {
+		logger.Info(
+			"Processing Signup Request",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Any("signupRequest", signupRequest),
+		)
+	}
 
 	userExists, userExistsError := authDao.CheckIfUserExistsByEmail(requestId, signupRequest.Email)
 
 	if userExistsError != nil {
-		logger.Error("[{}]: Error while checking user exists -> {}", requestId, userExistsError)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Error while checking user exists",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Int16(constants.ErrorCodeLogKey, userExistsError.ErrorCode),
+				zap.Any(constants.ErrorMessageLogKey, userExistsError.Message),
+			)
+		}
 		return nil, userExistsError
 	}
 
-	logger.Info("[{}]: User exists with email '{}'-> {}", requestId, signupRequest.Email, userExists)
+	if logger.IsInfoEnabled() {
+		logger.Info(
+			"User exists with email",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("email", signupRequest.Email),
+			zap.Bool("exists", userExists),
+		)
+	}
 
 	if userExists {
-		logger.Error("[{}]: Email already registered: {}", requestId, signupRequest.Email)
+		if logger.IsInfoEnabled() {
+			logger.Info(
+				"Email already registered",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.String("email", signupRequest.Email),
+			)
+		}
 		return nil, utils.GetErrorResponse("Email already registered", 409)
 	}
 
 	hashedPassword, bcryptError := bcrypt.GenerateFromPassword([]byte(signupRequest.Password), 14)
 
 	if bcryptError != nil {
-		logger.Error("[{}]: Error while hashing password -> {}", requestId, bcryptError)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Error hashing password",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(bcryptError),
+			)
+		}
 		return nil, utils.InternalServerErrorResponse()
 	}
 
 	signupRequest.Password = string(hashedPassword)
 	dbUser := createUserEntity(signupRequest)
-	dbUser.UserLoginType = enums.UserEntityLoginTypeEmailAndPassword
+	dbUser.UserLoginType = constants.UserEntityLoginTypeEmailAndPassword
 	user, saveError := authDao.SaveUser(requestId, dbUser)
 
 	if saveError != nil {
-		logger.Error("[{}]: Error while saving user -> {}", requestId, saveError)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Error saving user in DB",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Int16(constants.ErrorCodeLogKey, saveError.ErrorCode),
+				zap.Any(constants.ErrorMessageLogKey, saveError.Message),
+			)
+		}
 		return nil, saveError
 	}
 
 	if user == nil {
-		logger.Error("[{}]: Something went wrong while saving user", requestId)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Failed to register user",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
 		return nil, utils.InternalServerErrorResponse()
 	}
 
@@ -128,8 +208,13 @@ func Signup(requestId string, signupRequest authModels.SignupRequest) (*authMode
 
 // Logout Function to handle logout request and invalidates the jwt token
 func Logout(requestId string, logoutRequest authModels.LogoutRequest) (*authModels.LogoutResponse, *authModels.ErrorResponse) {
-	logger.Info("[{}]: Processing Logout Request -> {}", requestId, logoutRequest)
-
+	if logger.IsInfoEnabled() {
+		logger.Info(
+			"Processing Logout Request",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Any("logoutRequest", logoutRequest),
+		)
+	}
 	return &authModels.LogoutResponse{
 		Message: "Logout successful",
 	}, nil
@@ -137,7 +222,13 @@ func Logout(requestId string, logoutRequest authModels.LogoutRequest) (*authMode
 
 // ValidateToken Function to handle validate token request and validates the jwt token
 func ValidateToken(requestId string, validateTokenRequest authModels.ValidateTokenRequest) (*authModels.ValidateTokenResponse, *authModels.ErrorResponse) {
-	logger.Debug("[{}]: Processing Validate Token Request -> {}", requestId, validateTokenRequest)
+	if logger.IsDebugEnabled() {
+		logger.Debug(
+			"Processing Validate Token Request",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Any("validateTokenRequest", validateTokenRequest),
+		)
+	}
 
 	token := validateTokenRequest.AuthToken
 	userId := validateTokenRequest.UserId
@@ -145,7 +236,14 @@ func ValidateToken(requestId string, validateTokenRequest authModels.ValidateTok
 	tokenValidateResp, err := tokenService.GetInstance().ValidateJwtToken(requestId, token, userId)
 
 	if err != nil {
-		logger.Error("[{}]: Error while validating jwt token -> {}", requestId, err)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Error validating JWT auth token",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Int16(constants.ErrorCodeLogKey, err.ErrorCode),
+				zap.Any(constants.ErrorMessageLogKey, err.Message),
+			)
+		}
 		return nil, err
 	}
 
@@ -154,7 +252,13 @@ func ValidateToken(requestId string, validateTokenRequest authModels.ValidateTok
 
 // GenerateAndSendForgotPasswordToken Function to generate forgot password token and send forgot password email back to user
 func GenerateAndSendForgotPasswordToken(requestId string, forgotPasswordRequest authModels.ForgotPasswordRequest) (*authModels.ForgotPasswordResponse, *authModels.ErrorResponse) {
-	logger.Debug("[{}]: Processing forgot password Request -> {}", requestId, forgotPasswordRequest)
+	if logger.IsDebugEnabled() {
+		logger.Debug(
+			"Processing forgot password Request",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Any("forgotPasswordRequest", forgotPasswordRequest),
+		)
+	}
 
 	email := forgotPasswordRequest.Email
 
@@ -172,7 +276,7 @@ func GenerateAndSendForgotPasswordToken(requestId string, forgotPasswordRequest 
 		}
 	}
 
-	if user.LoginType == enums.UserEntityLoginTypeOauthAndOtp || user.LoginType == enums.UserEntityLoginTypeOauthOnly {
+	if user.LoginType == constants.UserEntityLoginTypeOauthAndOtp || user.LoginType == constants.UserEntityLoginTypeOauthOnly {
 		return nil, &authModels.ErrorResponse{
 			Message:   "Invalid Request",
 			Errors:    fmt.Sprintf("You are not allowed to reset password. Please login using %s oAuth", user.OAuthProvider),
@@ -215,6 +319,14 @@ func VerifyResetPasswordToken(requestId string, queryParams url.Values) (string,
 	emailParam := queryParams["email"]
 	tokenParam := queryParams["token"]
 
+	if logger.IsInfoEnabled() {
+		logger.Info("Processing reset password token request",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Any("email", emailParam),
+			zap.Any("token", tokenParam),
+		)
+	}
+
 	resetPasswordValidationError := utils.ValidateResetPasswordRequestQueryParams(emailParam, tokenParam)
 
 	if resetPasswordValidationError != nil {
@@ -237,7 +349,12 @@ func VerifyResetPasswordToken(requestId string, queryParams url.Values) (string,
 	}
 
 	if forgotPasswordTokenFromDatabase != token {
-		logger.Error("[{}] Forgot Token not found in Database", requestId)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Forgot Token not found in Database",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
 
 		return "", &authModels.ErrorResponse{
 			Message:   "Invalid forgot password token. Please try again",
@@ -247,14 +364,25 @@ func VerifyResetPasswordToken(requestId string, queryParams url.Values) (string,
 
 	redirectUrl := utils.GenerateForgotPasswordTokenRedirectUrl(email, token)
 
-	logger.Debug("[{}] Redirect URL generated is: {}", requestId, redirectUrl)
+	if logger.IsDebugEnabled() {
+		logger.Debug(
+			"Redirect URL generated is",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("redirectUrl", redirectUrl),
+		)
+	}
 
 	return redirectUrl, nil
 }
 
 // ResetPassword Function to actually reset password from forgot-password UI page
 func ResetPassword(requestId string, resetPasswordRequest authModels.ResetPasswordRequest) (*authModels.ResetPasswordResponse, *authModels.ErrorResponse) {
-	logger.Info("[{}]: Processing Reset password Request", requestId)
+	if logger.IsInfoEnabled() {
+		logger.Info(
+			"Processing Reset password Request",
+			zap.String(constants.RequestIdLogKey, requestId),
+		)
+	}
 
 	email := resetPasswordRequest.Email
 	resetPasswordToken := resetPasswordRequest.ResetPasswordToken
@@ -263,7 +391,12 @@ func ResetPassword(requestId string, resetPasswordRequest authModels.ResetPasswo
 
 	// verify and match password
 	if strings.TrimSpace(password) != strings.TrimSpace(confirmPassword) {
-		logger.Error("[{}] Password & confirm Passwords mismatch", requestId)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Password & confirm Passwords mismatch",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
 
 		return nil, &authModels.ErrorResponse{
 			Message:   "Password & confirm Passwords mismatch",
@@ -275,13 +408,23 @@ func ResetPassword(requestId string, resetPasswordRequest authModels.ResetPasswo
 	forgotPasswordTokenFromDatabase, fptfdError := authDao.GetForgotPasswordToken(requestId, email)
 
 	if fptfdError != nil {
-		logger.Error("[{}] error fetching forgot password token from DB", requestId)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Failed to fetch forgot password token from DB",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
 		return nil, fptfdError
 	}
 
 	// match provided token with DB token again for double check
 	if strings.TrimSpace(forgotPasswordTokenFromDatabase) != strings.TrimSpace(resetPasswordToken) {
-		logger.Error("[{}] forgot token from DB doesn't match with token provided", requestId)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"forgot token from DB doesn't match with token provided",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
 
 		return nil, &authModels.ErrorResponse{
 			Message:   "Invalid token provided",
@@ -289,11 +432,16 @@ func ResetPassword(requestId string, resetPasswordRequest authModels.ResetPasswo
 		}
 	}
 
-	// reset password
 	hashedPassword, bcryptError := bcrypt.GenerateFromPassword([]byte(password), 14)
 
 	if bcryptError != nil {
-		logger.Error("[{}]: Error while hashing password -> {}", requestId, bcryptError)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Error hashing password",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(bcryptError),
+			)
+		}
 		return nil, utils.InternalServerErrorResponse()
 	}
 
@@ -318,14 +466,24 @@ func ResetPassword(requestId string, resetPasswordRequest authModels.ResetPasswo
 
 // VerifyAdmin Function to check if userId is associated with an admin account or not
 func VerifyAdmin(requestId string, verifyAdminRequest authModels.VerifyAdminRequest) (*authModels.VerifyAdminResponse, *authModels.ErrorResponse) {
-	logger.Info("[{}]: Processing Verify admin Request", requestId)
+	if logger.IsInfoEnabled() {
+		logger.Info(
+			"Processing Verify admin Request",
+			zap.String(constants.RequestIdLogKey, requestId),
+		)
+	}
 
 	userId := verifyAdminRequest.UserId
 
 	user, err := authDao.GetUserById(requestId, userId)
 
 	if err != nil {
-		logger.Error("[{}] Failed to fetch admin user by ID", requestId)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Failed to fetch admin user by ID",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
 		return nil, err
 	}
 
@@ -354,4 +512,19 @@ func VerifyAdmin(requestId string, verifyAdminRequest authModels.VerifyAdminRequ
 		Message:    "Admin verified successfully",
 		StatusCode: 200,
 	}, nil
+}
+
+// function to validate provided password against the encrypted password stored in DB
+func verifyPassword(rawPassword string, encryptedPassword string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(encryptedPassword), []byte(rawPassword)) == nil
+}
+
+func createUserEntity(request model.SignupRequest) *entity.User {
+	return &entity.User{
+		Id:       strings.ReplaceAll(uuid.New().String(), "-", ""),
+		Email:    &request.Email,
+		Password: &request.Password,
+		Name:     request.Name,
+		Scopes:   "user",
+	}
 }

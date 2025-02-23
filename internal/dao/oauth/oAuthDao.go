@@ -3,11 +3,8 @@ package oauth_dao
 import (
 	MySQL "github.com/akgarg0472/urlshortener-auth-service/database"
 	"github.com/akgarg0472/urlshortener-auth-service/internal/entity"
-	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
-)
-
-var (
-	logger = Logger.GetLogger("oAuthDao.go")
+	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
+	"go.uber.org/zap"
 )
 
 func FetchOAuthProviders() []entity.OAuthProvider {
@@ -25,8 +22,10 @@ func FetchOAuthProviders() []entity.OAuthProvider {
 	result := db.Find(&oAuthProviders)
 
 	if result.Error != nil {
-		logger.Error("Error fetching oAuth providers: {}", result.Error)
-		panic(result.Error)
+		if logger.IsErrorEnabled() {
+			logger.Error("Error fetching oAuth providers", zap.Error(result.Error))
+		}
+		return oAuthProviders
 	}
 
 	return oAuthProviders

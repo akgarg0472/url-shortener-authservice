@@ -7,13 +7,11 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/akgarg0472/urlshortener-auth-service/constants"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/model"
-	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
-)
-
-var (
-	gOALogger = Logger.GetLogger("googleOAuthService.go")
+	"go.uber.org/zap"
 )
 
 const (
@@ -33,8 +31,13 @@ type GoogleUserInfoResponse struct {
 	Email          string `json:"email"`
 }
 
-func FetchGoogleProfileInfo(reqId string, request model.OAuthCallbackRequest) (*ProfileInfo, *model.ErrorResponse) {
-	gOALogger.Info("[{}] fetching profile info from google", reqId)
+func FetchGoogleProfileInfo(requestId string, request model.OAuthCallbackRequest) (*ProfileInfo, *model.ErrorResponse) {
+	if logger.IsInfoEnabled() {
+		logger.Info(
+			"Fetching profile info from google",
+			zap.String(constants.RequestIdLogKey, requestId),
+		)
+	}
 
 	clientId := utils.GetEnvVariable("OAUTH_GOOGLE_CLIENT_ID", "")
 	clientSecret := utils.GetEnvVariable("OAUTH_GOOGLE_CLIENT_SECRET", "")
@@ -49,14 +52,26 @@ func FetchGoogleProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 	})
 
 	if err != nil {
-		logger.Error("[{}] error creating JSON request: {}", reqId, err)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Error creating JSON request",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(err),
+			)
+		}
 		return nil, utils.InternalServerErrorResponse()
 	}
 
 	resp, err := http.Post(GoogleAccessTokenUrl, "application/json", bytes.NewBuffer(requestBody))
 
 	if err != nil {
-		logger.Error("[{}] failed to get access token: {}", reqId, err)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Failed to get access token",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(err),
+			)
+		}
 		return nil, utils.InternalServerErrorResponse()
 	}
 
@@ -72,18 +87,36 @@ func FetchGoogleProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 		er := json.NewDecoder(resp.Body).Decode(&response)
 
 		if er == nil {
-			logger.Error("[{}] Non 2xx status code {} received from access token request with response body: {}", reqId, resp.StatusCode, response)
+			if logger.IsErrorEnabled() {
+				logger.Error(
+					"Non 2xx status code received from access token request",
+					zap.String(constants.RequestIdLogKey, requestId),
+					zap.Int(constants.StatusCodeLogKey, resp.StatusCode),
+					zap.Any("response_body", response),
+				)
+			}
 		} else {
-			logger.Error("[{}] Non 2xx status code {} received from access token request", reqId, resp.StatusCode)
+			if logger.IsErrorEnabled() {
+				logger.Error(
+					"Non 2xx status code received from access token request",
+					zap.String(constants.RequestIdLogKey, requestId),
+					zap.Int(constants.StatusCodeLogKey, resp.StatusCode),
+				)
+			}
 		}
-
 		return nil, utils.InternalServerErrorResponse()
 	}
 
 	var tokenResponse GoogleAccessTokenResponse
 
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
-		logger.Error("[{}] failed to decode token response: {}", reqId, err)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Failed to decode access token response",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(err),
+			)
+		}
 		return nil, utils.InternalServerErrorResponse()
 	}
 
@@ -91,7 +124,13 @@ func FetchGoogleProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 	req, err := http.NewRequest("GET", GoogleUserInfoUrl, nil)
 
 	if err != nil {
-		logger.Error("[{}] failed to create user info request: {}", reqId, err)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Failed to create user info request",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(err),
+			)
+		}
 		return nil, utils.InternalServerErrorResponse()
 	}
 
@@ -100,7 +139,13 @@ func FetchGoogleProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 	resp, err = client.Do(req)
 
 	if err != nil {
-		logger.Error("[{}] failed to get user info: {}", reqId, err)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Failed to get user info",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(err),
+			)
+		}
 		return nil, utils.InternalServerErrorResponse()
 	}
 
@@ -112,13 +157,25 @@ func FetchGoogleProfileInfo(reqId string, request model.OAuthCallbackRequest) (*
 	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		logger.Error("[{}] invalid status code received from user info request: {}", reqId, resp.StatusCode)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Invalid status code received from user info request",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Int(constants.StatusCodeLogKey, resp.StatusCode),
+			)
+		}
 		return nil, utils.InternalServerErrorResponse()
 	}
 
 	var userInfoResponse GoogleUserInfoResponse
 	if err := json.NewDecoder(resp.Body).Decode(&userInfoResponse); err != nil {
-		logger.Error("[{}] failed to decode user info response: {}", reqId, err)
+		if logger.IsErrorEnabled() {
+			logger.Error(
+				"Failed to decode user info response",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(err),
+			)
+		}
 		return nil, utils.InternalServerErrorResponse()
 	}
 

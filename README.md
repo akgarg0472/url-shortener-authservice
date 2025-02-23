@@ -1,7 +1,7 @@
 # URL Shortener Authentication Service
 
 ![Java Version](https://img.shields.io/badge/golang-1.21-blue)
-![version](https://img.shields.io/badge/version-1.6.2-blue)
+![version](https://img.shields.io/badge/version-1.7.0-blue)
 
 This project is a URL Shortener Authentication Service written in Go. It handles authentication, user management, token-based security (JWT), and integrates with other services like Kafka for email notifications and Consul for service discovery. This service is part of a larger URL shortener platform.
 
@@ -240,11 +240,11 @@ VALUES
 
 After inserting the configuration into the table, **restart the authentication service** to apply the changes and enable OAuth functionality.
 
-> ​  
+> ​
 > **Note**:
 >
 > 1.  Ensure that you’ve properly registered your OAuth applications on GitHub and Google, and that your client IDs and secret keys are correctly configured.
-> 2.  The provided redirect URIs should match the ones registered in your OAuth application settings on both GitHub and Google.  
+> 2.  The provided redirect URIs should match the ones registered in your OAuth application settings on both GitHub and Google.
 >     ​
 
 For more details, refer to the official documentations:

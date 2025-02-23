@@ -3,65 +3,65 @@ package router
 import (
 	"github.com/go-chi/chi"
 
-	AuthHandler "github.com/akgarg0472/urlshortener-auth-service/internal/handler"
-	Middlewares "github.com/akgarg0472/urlshortener-auth-service/internal/middleware"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/handler"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/middleware"
 )
 
 func AuthRouterV1() *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Route("/login", func(r chi.Router) {
-		r.Use(Middlewares.AddRequestIdHeader)
-		r.Use(Middlewares.ValidateRequestJSONContentType)
-		r.Use(Middlewares.LoginRequestBodyValidator)
-		r.Post("/", AuthHandler.LoginHandler)
+		r.Use(middleware.AddRequestIdHeader)
+		r.Use(middleware.ValidateRequestJSONContentType)
+		r.Use(middleware.LoginRequestBodyValidator)
+		r.Post("/", handler.LoginHandler)
 	})
 
 	router.Route("/signup", func(r chi.Router) {
-		r.Use(Middlewares.AddRequestIdHeader)
-		r.Use(Middlewares.ValidateRequestJSONContentType)
-		r.Use(Middlewares.SignupRequestBodyValidator)
-		r.Post("/", AuthHandler.SignupHandler)
+		r.Use(middleware.AddRequestIdHeader)
+		r.Use(middleware.ValidateRequestJSONContentType)
+		r.Use(middleware.SignupRequestBodyValidator)
+		r.Post("/", handler.SignupHandler)
 	})
 
 	router.Route("/validate-token", func(r chi.Router) {
-		r.Use(Middlewares.AddRequestIdHeader)
-		r.Use(Middlewares.ValidateRequestJSONContentType)
-		r.Use(Middlewares.VerifyTokenRequestBodyValidator)
-		r.Post("/", AuthHandler.VerifyTokenHandler)
+		r.Use(middleware.AddRequestIdHeader)
+		r.Use(middleware.ValidateRequestJSONContentType)
+		r.Use(middleware.VerifyTokenRequestBodyValidator)
+		r.Post("/", handler.VerifyTokenHandler)
 	})
 
 	router.Route("/logout", func(r chi.Router) {
-		r.Use(Middlewares.AddRequestIdHeader)
-		r.Use(Middlewares.ValidateRequestJSONContentType)
-		r.Use(Middlewares.LogoutRequestBodyValidator)
-		r.Post("/", AuthHandler.LogoutHandler)
+		r.Use(middleware.AddRequestIdHeader)
+		r.Use(middleware.ValidateRequestJSONContentType)
+		r.Use(middleware.LogoutRequestBodyValidator)
+		r.Post("/", handler.LogoutHandler)
 	})
 
 	router.Route("/forgot-password", func(r chi.Router) {
-		r.Use(Middlewares.AddRequestIdHeader)
-		r.Use(Middlewares.ValidateRequestJSONContentType)
-		r.Use(Middlewares.ForgotPasswordRequestBodyValidator)
-		r.Post("/", AuthHandler.ForgotPasswordHandler)
+		r.Use(middleware.AddRequestIdHeader)
+		r.Use(middleware.ValidateRequestJSONContentType)
+		r.Use(middleware.ForgotPasswordRequestBodyValidator)
+		r.Post("/", handler.ForgotPasswordHandler)
 	})
 
 	router.Route("/verify-reset-password", func(r chi.Router) {
-		r.Use(Middlewares.AddRequestIdHeader)
-		r.Get("/", AuthHandler.VerifyResetPasswordHandler)
+		r.Use(middleware.AddRequestIdHeader)
+		r.Get("/", handler.VerifyResetPasswordHandler)
 	})
 
 	router.Route("/reset-password", func(r chi.Router) {
-		r.Use(Middlewares.AddRequestIdHeader)
-		r.Use(Middlewares.ValidateRequestJSONContentType)
-		r.Use(Middlewares.ResetPasswordRequestBodyValidator)
-		r.Post("/", AuthHandler.ResetPasswordHandler)
+		r.Use(middleware.AddRequestIdHeader)
+		r.Use(middleware.ValidateRequestJSONContentType)
+		r.Use(middleware.ResetPasswordRequestBodyValidator)
+		r.Post("/", handler.ResetPasswordHandler)
 	})
 
 	router.Route("/verify-admin", func(r chi.Router) {
-		r.Use(Middlewares.AddRequestIdHeader)
-		r.Use(Middlewares.ValidateRequestJSONContentType)
-		r.Use(Middlewares.VerifyAdminRequestBodyHandler)
-		r.Post("/", AuthHandler.VerifyAdminHandler)
+		r.Use(middleware.AddRequestIdHeader)
+		r.Use(middleware.ValidateRequestJSONContentType)
+		r.Use(middleware.VerifyAdminRequestBodyHandler)
+		r.Post("/", handler.VerifyAdminHandler)
 	})
 
 	return router

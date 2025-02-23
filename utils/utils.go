@@ -1,6 +1,8 @@
 package utils
 
-import "strings"
+import (
+	"strings"
+)
 
 func GenerateForgotPasswordTokenRedirectUrl(email string, token string) string {
 	frontendBaseUrl := GetEnvVariable("FRONTEND_BASE_DOMAIN", "http://127.0.0.1:3000/")

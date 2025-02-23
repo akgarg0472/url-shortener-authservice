@@ -5,12 +5,12 @@ import (
 	"regexp"
 	"strings"
 
-	AuthModels "github.com/akgarg0472/urlshortener-auth-service/model"
+	"github.com/akgarg0472/urlshortener-auth-service/model"
 	"github.com/go-sql-driver/mysql"
 )
 
 func InternalServerErrorResponseByte() []byte {
-	errorResponse := AuthModels.ErrorResponse{
+	errorResponse := model.ErrorResponse{
 		Message:   "internal server error",
 		ErrorCode: 500,
 	}
@@ -19,22 +19,22 @@ func InternalServerErrorResponseByte() []byte {
 	return []byte(errorResponseJson)
 }
 
-func InternalServerErrorResponse() *AuthModels.ErrorResponse {
-	return &AuthModels.ErrorResponse{
+func InternalServerErrorResponse() *model.ErrorResponse {
+	return &model.ErrorResponse{
 		Message:   "internal server error",
 		ErrorCode: 500,
 	}
 }
 
-func BadRequestErrorResponse(message string) *AuthModels.ErrorResponse {
-	return &AuthModels.ErrorResponse{
+func BadRequestErrorResponse(message string) *model.ErrorResponse {
+	return &model.ErrorResponse{
 		Message:   message,
 		ErrorCode: 400,
 	}
 }
 
-func GetErrorResponse(message interface{}, errorCode int16) *AuthModels.ErrorResponse {
-	return &AuthModels.ErrorResponse{
+func GetErrorResponse(message interface{}, errorCode int16) *model.ErrorResponse {
+	return &model.ErrorResponse{
 		Message:   message,
 		ErrorCode: errorCode,
 	}
@@ -46,7 +46,7 @@ func GetErrorResponseByte(message interface{}, errorCode int16) []byte {
 	return errorResponseJson
 }
 
-func ParseMySQLErrorAndReturnErrorResponse(err error) *AuthModels.ErrorResponse {
+func ParseMySQLErrorAndReturnErrorResponse(err error) *model.ErrorResponse {
 	mysqlErr, ok := err.(*mysql.MySQLError)
 
 	if !ok {

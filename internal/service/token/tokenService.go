@@ -6,14 +6,15 @@ import (
 	"strings"
 	"time"
 
-	Model "github.com/akgarg0472/urlshortener-auth-service/model"
-	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
+	"github.com/akgarg0472/urlshortener-auth-service/constants"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
+	"github.com/akgarg0472/urlshortener-auth-service/model"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
 	"github.com/golang-jwt/jwt/v5"
+	"go.uber.org/zap"
 )
 
 var (
-	logger   = Logger.GetLogger("tokenService.go")
 	instance *TokenService
 )
 
@@ -40,8 +41,13 @@ func GetInstance() *TokenService {
 }
 
 // GenerateJwtToken generates the JWT token and stores it in the map
-func (tokenService *TokenService) GenerateJwtToken(requestId string, user Model.User) (string, *Model.ErrorResponse) {
-	logger.Info("[{}]: Generating JWT token -> {}", requestId, user.String())
+func (tokenService *TokenService) GenerateJwtToken(requestId string, user model.User) (string, *model.ErrorResponse) {
+	if logger.IsInfoEnabled() {
+		logger.Info("Generating JWT token",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("user", user.String()),
+		)
+	}
 
 	claims := jwt.MapClaims{
 		"iss":    tokenService.jwtIssuer,
@@ -57,7 +63,12 @@ func (tokenService *TokenService) GenerateJwtToken(requestId string, user Model.
 	jwtTokenString, err := token.SignedString(tokenService.jwtSecretKey)
 
 	if err != nil {
-		logger.Error("[{}]: Error while generating JWT token -> {}", requestId, err.Error())
+		if logger.IsErrorEnabled() {
+			logger.Error("Error while generating JWT token",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(err),
+			)
+		}
 		return "", utils.InternalServerErrorResponse()
 	}
 
@@ -69,8 +80,14 @@ func (tokenService *TokenService) ValidateJwtToken(
 	requestId string,
 	jwtToken string,
 	userId string,
-) (*Model.ValidateTokenResponse, *Model.ErrorResponse) {
-	logger.Debug("[{}]: Validating JWT token -> userId: {}, jwtToken: {}", requestId, userId, jwtToken)
+) (*model.ValidateTokenResponse, *model.ErrorResponse) {
+	if logger.IsDebugEnabled() {
+		logger.Debug("Validating JWT token",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("userId", userId),
+			zap.String("jwtToken", jwtToken),
+		)
+	}
 
 	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -80,7 +97,12 @@ func (tokenService *TokenService) ValidateJwtToken(
 	})
 
 	if err != nil {
-		logger.Error("[{}]: Error validating token -> {}", requestId, err.Error())
+		if logger.IsErrorEnabled() {
+			logger.Error("Error validating token",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(err),
+			)
+		}
 
 		if token != nil {
 			claims, isMapClaims := token.Claims.(jwt.MapClaims)
@@ -97,11 +119,15 @@ func (tokenService *TokenService) ValidateJwtToken(
 	uId := claims["uid"].(string)
 
 	if strings.TrimSpace(uId) != strings.TrimSpace(userId) {
-		logger.Error("[{}]: Error validating token -> Invalid userId", requestId)
+		if logger.IsErrorEnabled() {
+			logger.Error("Error validating token: Invalid userId",
+				zap.String(constants.RequestIdLogKey, requestId),
+			)
+		}
 		return nil, utils.BadRequestErrorResponse("Passwords mismatch")
 	}
 
-	return &Model.ValidateTokenResponse{
+	return &model.ValidateTokenResponse{
 		UserId:     uId,
 		Expiration: claims["exp"].(float64),
 		Token:      token.Raw,
@@ -109,8 +135,13 @@ func (tokenService *TokenService) ValidateJwtToken(
 	}, nil
 }
 
-func (tokenService *TokenService) GenerateForgotPasswordToken(requestId string, user Model.User) (string, *Model.ErrorResponse) {
-	logger.Info("[{}]: Generating forgot password token -> {}", requestId, user.String())
+func (tokenService *TokenService) GenerateForgotPasswordToken(requestId string, user model.User) (string, *model.ErrorResponse) {
+	if logger.IsInfoEnabled() {
+		logger.Info("Generating forgot password token",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("user", user.String()),
+		)
+	}
 
 	claims := jwt.MapClaims{
 		"sub": user.Email,
@@ -123,17 +154,27 @@ func (tokenService *TokenService) GenerateForgotPasswordToken(requestId string, 
 	forgotPasswordToken, err := token.SignedString(tokenService.forgotPasswordSecretKey)
 
 	if err != nil {
-		logger.Error("[{}]: Error while generating forgot password token -> {}", requestId, err.Error())
+		if logger.IsErrorEnabled() {
+			logger.Error("Error while generating forgot password token",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(err),
+			)
+		}
 		return "", utils.InternalServerErrorResponse()
 	}
 
 	return forgotPasswordToken, nil
 }
 
-func (tokenService *TokenService) ValidateForgotPasswordToken(requestId string, forgotPasswordToken string) *Model.ErrorResponse {
-	logger.Debug("[{}]: Validating Forgot Password token -> {}", requestId, forgotPasswordToken)
+func (tokenService *TokenService) ValidateForgotPasswordToken(requestId string, forgotPasswordToken string) *model.ErrorResponse {
+	if logger.IsDebugEnabled() {
+		logger.Debug("Validating Forgot Password token",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("forgotPasswordToken", forgotPasswordToken),
+		)
+	}
 
-	parsedToken, err := jwt.Parse(forgotPasswordToken, func(token *jwt.Token) (interface{}, error) {
+	parsedToken, err := jwt.Parse(forgotPasswordToken, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("error parsing token")
 		}
@@ -141,7 +182,12 @@ func (tokenService *TokenService) ValidateForgotPasswordToken(requestId string, 
 	})
 
 	if err != nil {
-		logger.Error("[{}]: Error validating token -> {}", requestId, err.Error())
+		if logger.IsErrorEnabled() {
+			logger.Error("Error validating token",
+				zap.String(constants.RequestIdLogKey, requestId),
+				zap.Error(err),
+			)
+		}
 
 		if parsedToken != nil {
 			claims, isMapClaims := parsedToken.Claims.(jwt.MapClaims)

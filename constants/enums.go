@@ -1,4 +1,4 @@
-package enums
+package constants
 
 type OAuthProvider string
 type UserEntityLoginType string

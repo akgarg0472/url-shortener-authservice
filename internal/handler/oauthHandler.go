@@ -3,17 +3,17 @@ package handler
 import (
 	"net/http"
 
-	oauthservice "github.com/akgarg0472/urlshortener-auth-service/internal/service/auth/oauth"
+	"github.com/akgarg0472/urlshortener-auth-service/constants"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
+	oauth_service "github.com/akgarg0472/urlshortener-auth-service/internal/service/auth/oauth"
 	"github.com/akgarg0472/urlshortener-auth-service/model"
-	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
 	"github.com/akgarg0472/urlshortener-auth-service/utils"
+	"go.uber.org/zap"
 )
-
-var oauthLogger = Logger.GetLogger("authHandler.go")
 
 func GetOAuthProvidersHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	providers := httpRequest.URL.Query().Get("provider")
-	clientIds := oauthservice.GetOAuthProvider(providers)
+	clientIds := oauth_service.GetOAuthProvider(providers)
 
 	response := model.OAuthProviderResponse{
 		Clients:    clientIds,
@@ -27,12 +27,17 @@ func GetOAuthProvidersHandler(responseWriter http.ResponseWriter, httpRequest *h
 func OAuthCallbackHandler(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	context := httpRequest.Context()
 
-	requestId := httpRequest.Header.Get("X-Request-Id")
+	requestId := httpRequest.Header.Get(constants.RequestIdHeaderName)
 	oAuthCallbackRequest := context.Value(utils.RequestContextKeys.OAuthCallbackRequestKey).(model.OAuthCallbackRequest)
 
-	oauthLogger.Trace("[{}]: OAuth Callback request received on handler -> {}", requestId, oAuthCallbackRequest)
+	if logger.IsDebugEnabled() {
+		logger.Debug("OAuth Callback request received on handler",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.Any("oAuthCallbackRequest", oAuthCallbackRequest),
+		)
+	}
 
-	oAuthCallbackResponse, oAuthCallbackError := oauthservice.ProcessCallbackRequest(requestId, oAuthCallbackRequest)
+	oAuthCallbackResponse, oAuthCallbackError := oauth_service.ProcessCallbackRequest(requestId, oAuthCallbackRequest)
 
 	sendResponseToClient(responseWriter, requestId, oAuthCallbackResponse, oAuthCallbackError, 200)
 }

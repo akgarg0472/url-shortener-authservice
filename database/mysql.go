@@ -5,17 +5,17 @@ import (
 	"sync"
 	"time"
 
-	entity2 "github.com/akgarg0472/urlshortener-auth-service/internal/entity"
-
-	MyLogger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
-	Utils "github.com/akgarg0472/urlshortener-auth-service/utils"
+	"github.com/akgarg0472/urlshortener-auth-service/constants"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/entity"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
+	"github.com/akgarg0472/urlshortener-auth-service/utils"
+	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	ormLogger "gorm.io/gorm/logger"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 var (
-	logger   = MyLogger.GetLogger("mysql.go")
 	instance *gorm.DB
 	once     sync.Once
 )
@@ -24,8 +24,8 @@ func InitDB() {
 	once.Do(func() {
 		logger.Info("initializing MySQL database")
 
-		maxRetryDuration := Utils.GetEnvDurationSeconds("DB_MAX_RETRY_DURATION_SECONDS", 1*time.Minute)
-		retryDelay := Utils.GetEnvDurationSeconds("DB_RETRY_DELAY_SECONDS", 5*time.Second)
+		maxRetryDuration := utils.GetEnvDurationSeconds("DB_MAX_RETRY_DURATION_SECONDS", 1*time.Minute)
+		retryDelay := utils.GetEnvDurationSeconds("DB_RETRY_DELAY_SECONDS", 5*time.Second)
 		var startTime = time.Now()
 
 		var db *gorm.DB
@@ -35,18 +35,25 @@ func InitDB() {
 			elapsed := time.Since(startTime)
 
 			if elapsed > maxRetryDuration {
-				logger.Fatal("Failed to initialize MySQL database after 1 minute: %s", err.Error())
-				panic("Error Initializing MySQL Database: " + err.Error())
+				if logger.IsFatalEnabled() {
+					logger.Fatal("Failed to initialize MySQL database after 1 minute", zap.Error(err))
+				}
+				panic(fmt.Sprintf("Error Initializing MySQL Database: %v", err))
 			}
 
 			dsn := getDatasource()
 
 			db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
-				Logger: ormLogger.Default.LogMode(ormLogger.Silent),
+				Logger: gormLogger.Default.LogMode(gormLogger.Silent),
 			})
 
 			if err != nil {
-				logger.Error("Error initializing MySQL database (elapsed time: %s): %s", elapsed, err.Error())
+				if logger.IsErrorEnabled() {
+					logger.Error("Error initializing MySQL database",
+						zap.Duration("elapsed_time", elapsed),
+						zap.Error(err),
+					)
+				}
 				time.Sleep(retryDelay)
 			} else {
 				logger.Info("MySQL database initialized successfully")
@@ -59,38 +66,52 @@ func InitDB() {
 }
 
 func initSchemas() {
-	user := entity2.User{}
-	oAuthClient := entity2.OAuthProvider{}
+	user := entity.User{}
+	oAuthClient := entity.OAuthProvider{}
 
 	err := instance.AutoMigrate(&user)
 
 	if err != nil {
-		logger.Fatal("Error initializing `{}` database schema: {}", user.TableName(), err.Error())
-		panic("Error Initializing DB schema `{}`: " + err.Error())
+		if logger.IsFatalEnabled() {
+			logger.Fatal("Error initializing database schema",
+				zap.String("table", user.TableName()),
+				zap.Error(err),
+			)
+		}
+		panic(fmt.Sprintf("Error initializing DB schema `%s`: %v", user.TableName(), err))
 	}
 
 	err = instance.AutoMigrate(&oAuthClient)
 
 	if err != nil {
-		logger.Fatal("Error initializing `{}` database schema: {}", oAuthClient.TableName(), err.Error())
-		panic("Error Initializing DB schema: " + err.Error())
+		if logger.IsFatalEnabled() {
+			logger.Fatal("Error initializing database schema", zap.String("schema", oAuthClient.TableName()), zap.Error(err))
+		}
+		panic(fmt.Sprintf("Error initializing DB schema `%s`: %v", oAuthClient.TableName(), err))
 	}
 
-	logger.Info("Initialized `{}`, `{}` schema successfully", user.TableName(), oAuthClient.TableName())
+	logger.Info("Initialized database schemas successfully",
+		zap.String("user_schema", user.TableName()),
+		zap.String("oauth_client_schema", oAuthClient.TableName()),
+	)
 }
 
 func GetInstance(requestId string, from string) *gorm.DB {
-	logger.Trace("[{}]: {} getting DB instance", requestId, from)
+	if logger.IsDebugEnabled() {
+		logger.Debug("Getting DB instance",
+			zap.String(constants.RequestIdLogKey, requestId),
+			zap.String("from", from),
+		)
+	}
 	return instance
 }
 
 func getDatasource() string {
-	dbHost := Utils.GetEnvVariable("MYSQL_DB_HOST", "127.0.0.1")
-	dbPort := Utils.GetEnvVariable("MYSQL_DB_PORT", "3306")
-	dbUserName := Utils.GetEnvVariable("MYSQL_DB_USERNAME", "")
-	dbPassword := Utils.GetEnvVariable("MYSQL_DB_PASSWORD", "")
-	dbName := Utils.GetEnvVariable("MYSQL_DB_NAME", "")
-
+	dbHost := utils.GetEnvVariable("MYSQL_DB_HOST", "127.0.0.1")
+	dbPort := utils.GetEnvVariable("MYSQL_DB_PORT", "3306")
+	dbUserName := utils.GetEnvVariable("MYSQL_DB_USERNAME", "")
+	dbPassword := utils.GetEnvVariable("MYSQL_DB_PASSWORD", "")
+	dbName := utils.GetEnvVariable("MYSQL_DB_NAME", "")
 	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=True", dbUserName, dbPassword, dbHost, dbPort, dbName)
 }
 
@@ -99,7 +120,9 @@ func CloseDB() error {
 		db, err := instance.DB()
 
 		if err != nil || db.Close() != nil {
-			logger.Error("Error closing DB: {}", err)
+			if logger.IsErrorEnabled() {
+				logger.Error("Error closing DB", zap.Error(err))
+			}
 			return err
 		}
 

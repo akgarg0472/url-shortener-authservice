@@ -11,20 +11,19 @@ import (
 	"syscall"
 
 	"github.com/go-chi/chi"
-	"github.com/joho/godotenv"
+	"go.uber.org/zap"
 
-	DB "github.com/akgarg0472/urlshortener-auth-service/database"
-	DiscoveryClient "github.com/akgarg0472/urlshortener-auth-service/discovery-client"
-	Metrics "github.com/akgarg0472/urlshortener-auth-service/internal/metrics"
-	Routers "github.com/akgarg0472/urlshortener-auth-service/internal/router"
-	OAuthService "github.com/akgarg0472/urlshortener-auth-service/internal/service/auth/oauth"
-	KafkaService "github.com/akgarg0472/urlshortener-auth-service/internal/service/kafka"
-	Logger "github.com/akgarg0472/urlshortener-auth-service/pkg/logger"
-	Utils "github.com/akgarg0472/urlshortener-auth-service/utils"
+	"github.com/akgarg0472/urlshortener-auth-service/database"
+	"github.com/akgarg0472/urlshortener-auth-service/discovery"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/metrics"
+	"github.com/akgarg0472/urlshortener-auth-service/internal/router"
+	oauth_service "github.com/akgarg0472/urlshortener-auth-service/internal/service/auth/oauth"
+	kafka_service "github.com/akgarg0472/urlshortener-auth-service/internal/service/kafka"
+	"github.com/akgarg0472/urlshortener-auth-service/utils"
 )
 
 var (
-	logger    = Logger.GetLogger("main.go")
 	BuildTime string
 	GitCommit string
 	BuildHost string
@@ -32,11 +31,9 @@ var (
 )
 
 func init() {
-	loadDotEnv()
-	DB.InitDB()
-	OAuthService.InitOAuthProviders()
-	KafkaService.InitKafka()
-	Metrics.InitPrometheus()
+	database.InitDB()
+	oauth_service.InitOAuthProviders()
+	kafka_service.InitKafka()
 }
 
 func main() {
@@ -48,14 +45,14 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	portEnv := Utils.GetEnvVariable("SERVER_PORT", "8081")
+	portEnv := utils.GetEnvVariable("SERVER_PORT", "8081")
 	port, err := strconv.Atoi(portEnv)
 
 	if err != nil {
-		panic("Invalid port value defined in environment: " + portEnv)
+		panic(fmt.Sprintf("Invalid port value defined in environment: %s", portEnv))
 	}
 
-	DiscoveryClient.InitDiscoveryClient(port)
+	discovery.InitDiscoveryClient(port)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
@@ -63,12 +60,16 @@ func main() {
 	}
 
 	go func() {
-		logger.Info("Starting server on port: {}", port)
+		logger.Sugar().Infof("Starting server on port: %d", port)
 
-		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("Error starting server: {}", err)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if logger.IsErrorEnabled() {
+				logger.Error("Error starting server", zap.Error(err))
+			}
 		} else {
-			logger.Info("Server started on port: {}", port)
+			if logger.IsInfoEnabled() {
+				logger.Info("Server started on port", zap.Int("port", port))
+			}
 		}
 	}()
 
@@ -77,62 +78,59 @@ func main() {
 	// Wait for a termination signal
 	<-sigCh
 
-	logger.Info("Shutting down server gracefully...")
+	if logger.IsInfoEnabled() {
+		logger.Info("Shutting down server gracefully...")
+	}
 
 	shutdownError := server.Shutdown(ctx)
 
 	if shutdownError != nil {
-		logger.Error("Error during server shutdown: {}", err)
-	}
-}
-
-func loadDotEnv() {
-	err := godotenv.Load()
-
-	if err != nil {
-		logger.Info("Error loading .env file: %v", err)
+		logger.Error("Error during server shutdown", zap.Error(err))
 	}
 }
 
 func loadRoutersV1() *chi.Mux {
-	router := chi.NewRouter()
+	r := chi.NewRouter()
 
-	router.Use(Metrics.PrometheusMiddleware)
+	r.Use(metrics.PrometheusMiddleware)
 
-	router.Mount("/api/v1/auth", Routers.AuthRouterV1())
-	router.Mount("/api/v1/auth/oauth", Routers.OAuthRouterV1())
-	router.Mount("/", Routers.PingRouterV1())
-	router.Mount("/admin", Routers.DiscoveryRouterV1())
-	router.Handle("/prometheus/metrics", Metrics.MetricsHandler())
+	r.Mount("/api/v1/auth", router.AuthRouterV1())
+	r.Mount("/api/v1/auth/oauth", router.OAuthRouterV1())
+	r.Mount("/", router.PingRouterV1())
+	r.Mount("/admin", router.DiscoveryRouterV1())
+	r.Handle("/prometheus/metrics", metrics.MetricsHandler())
 
-	return router
+	return r
 }
 
 func cleanupResources(server *http.Server) {
-	logger.Info("Cleaning up before exiting...")
-
-	dbCloseError := DB.CloseDB()
-
-	if dbCloseError != nil {
-		logger.Error("Error closing DB connection: {}", dbCloseError.Error())
+	if logger.IsInfoEnabled() {
+		logger.Info("Cleaning up before exiting...")
 	}
 
-	discoveryClientCloseError := DiscoveryClient.UnregisterInstance()
-
-	if discoveryClientCloseError != nil {
-		logger.Error("Error unregistering discovery Client: {}", discoveryClientCloseError.Error())
+	if err := database.CloseDB(); err != nil && logger.IsErrorEnabled() {
+		if logger.IsErrorEnabled() {
+			logger.Error("Error closing DB connection", zap.Error(err))
+		}
 	}
 
-	kafkaCloseError := KafkaService.CloseKafka()
+	if err := discovery.UnregisterInstance(); err != nil && logger.IsErrorEnabled() {
+		if logger.IsErrorEnabled() {
+			logger.Error("Error unregistering discovery client", zap.Error(err))
+		}
+	}
 
-	if kafkaCloseError != nil {
-		logger.Error("Error closing kafka connection: {}", kafkaCloseError.Error())
+	if err := kafka_service.CloseKafka(); err != nil && logger.IsErrorEnabled() {
+		if logger.IsErrorEnabled() {
+			logger.Error("Error closing Kafka connection", zap.Error(err))
+		}
 	}
 
 	if server != nil {
-		serverCloseError := server.Shutdown(context.Background())
-		if serverCloseError != nil {
-			logger.Error("Error shutting down server: {}", serverCloseError.Error())
+		if err := server.Shutdown(context.Background()); err != nil && logger.IsErrorEnabled() {
+			if logger.IsErrorEnabled() {
+				logger.Error("Error shutting down server", zap.Error(err))
+			}
 		}
 	}
 }
