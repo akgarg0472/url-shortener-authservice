@@ -61,7 +61,7 @@ func newConfigFromEnv() *Config {
 	}
 
 	level := zap.InfoLevel
-	if lvlStr := os.Getenv("LOGGING_LEVEL"); lvlStr != "" {
+	if lvlStr := os.Getenv("LOG_LEVEL"); lvlStr != "" {
 		_ = level.UnmarshalText([]byte(lvlStr))
 	}
 
