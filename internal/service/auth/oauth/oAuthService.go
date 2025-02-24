@@ -234,6 +234,7 @@ func registerUser(requestId string, profileInfo ProfileInfo) (*model.User, *mode
 		LastLoginAt:         utils.GetInt64OrNil(registeredUser.LastLoginAt),
 		PasswordChangedAt:   utils.GetInt64OrNil(registeredUser.LastPasswordChangedAt),
 		IsDeleted:           registeredUser.IsDeleted,
+		LoginType:           registeredUser.UserLoginType,
 	}, nil
 }
 
