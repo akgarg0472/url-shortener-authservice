@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/akgarg0472/urlshortener-auth-service/constants"
 	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
@@ -38,6 +39,20 @@ func OAuthCallbackHandler(responseWriter http.ResponseWriter, httpRequest *http.
 	}
 
 	oAuthCallbackResponse, oAuthCallbackError := oauth_service.ProcessCallbackRequest(requestId, oAuthCallbackRequest)
+
+	if oAuthCallbackResponse.Success {
+		cookie := &http.Cookie{
+			Name:     "auth_token",
+			Value:    oAuthCallbackResponse.AuthToken,
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			Expires:  time.Now().Add(24 * time.Hour),
+			SameSite: http.SameSiteNoneMode,
+		}
+
+		http.SetCookie(responseWriter, cookie)
+	}
 
 	sendResponseToClient(responseWriter, requestId, oAuthCallbackResponse, oAuthCallbackError, 200)
 }
