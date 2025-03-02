@@ -226,14 +226,12 @@ func ValidateToken(requestId string, validateTokenRequest authModels.ValidateTok
 		logger.Debug(
 			"Processing Validate Token Request",
 			zap.String(constants.RequestIdLogKey, requestId),
-			zap.Any("validateTokenRequest", validateTokenRequest),
+			zap.Any("userId", validateTokenRequest.UserId),
+			zap.Any("authToken", validateTokenRequest.AuthToken),
 		)
 	}
 
-	token := validateTokenRequest.AuthToken
-	userId := validateTokenRequest.UserId
-
-	tokenValidateResp, err := tokenService.GetInstance().ValidateJwtToken(requestId, token, userId)
+	tokenValidateResp, err := tokenService.GetInstance().ValidateJwtToken(requestId, validateTokenRequest.AuthToken, validateTokenRequest.UserId)
 
 	if err != nil {
 		if logger.IsErrorEnabled() {

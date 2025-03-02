@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/akgarg0472/urlshortener-auth-service/constants"
 	"github.com/akgarg0472/urlshortener-auth-service/internal/logger"
@@ -26,6 +27,18 @@ func LoginHandler(responseWriter http.ResponseWriter, httpRequest *http.Request)
 	}
 
 	loginResponse, loginError := auth_service.LoginWithEmailPassword(requestId, loginRequest)
+
+	cookie := &http.Cookie{
+		Name:     "auth_token",
+		Value:    loginResponse.AccessToken,
+		HttpOnly: true,
+		Secure:   true,
+		Path:     "/",
+		Expires:  time.Now().Add(24 * time.Hour),
+		SameSite: http.SameSiteNoneMode,
+	}
+
+	http.SetCookie(responseWriter, cookie)
 
 	sendResponseToClient(responseWriter, requestId, loginResponse, loginError, 200)
 }
@@ -64,6 +77,18 @@ func LogoutHandler(responseWriter http.ResponseWriter, httpRequest *http.Request
 	}
 
 	logoutResponse, logoutError := auth_service.Logout(requestId, logoutRequest)
+
+	cookie := &http.Cookie{
+		Name:     "auth_token",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		Path:     "/",
+		SameSite: http.SameSiteNoneMode,
+		Expires:  time.Now().Add(-1 * time.Hour),
+	}
+
+	http.SetCookie(responseWriter, cookie)
 
 	sendResponseToClient(responseWriter, requestId, logoutResponse, logoutError, 200)
 }

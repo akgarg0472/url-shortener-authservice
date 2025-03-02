@@ -30,21 +30,20 @@ func (r SignupRequest) String() string {
 }
 
 type LogoutRequest struct {
-	AuthToken string `json:"auth_token" validate:"required"`
-	UserId    string `json:"user_id" validate:"required"`
+	UserId string `json:"user_id" validate:"required"`
 }
 
 func (r LogoutRequest) String() string {
-	return fmt.Sprintf("{AuthToken: %s, UserId: %s}", maskString(r.AuthToken, false), r.UserId)
+	return fmt.Sprintf("{UserId: %s}", r.UserId)
 }
 
 type ValidateTokenRequest struct {
-	AuthToken string `json:"auth_token" validate:"required"`
 	UserId    string `json:"user_id" validate:"required"`
+	AuthToken string `json:"auth_token" validate:"required"`
 }
 
 func (r ValidateTokenRequest) String() string {
-	return fmt.Sprintf("{AuthToken: %s, UserId: %s}", maskString(r.AuthToken, false), r.UserId)
+	return fmt.Sprintf("{UserId: %s}", r.UserId)
 }
 
 type ForgotPasswordRequest struct {

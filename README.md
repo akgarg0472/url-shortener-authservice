@@ -1,7 +1,7 @@
 # URL Shortener Authentication Service
 
 ![Java Version](https://img.shields.io/badge/golang-1.21-blue)
-![version](https://img.shields.io/badge/version-1.7.4-blue)
+![version](https://img.shields.io/badge/version-1.7.5-blue)
 
 This project is a URL Shortener Authentication Service written in Go. It handles authentication, user management, token-based security (JWT), and integrates with other services like Kafka for email notifications and Consul for service discovery. This service is part of a larger URL shortener platform.
 
